@@ -2,12 +2,12 @@ import UIKit
 
 /// :nodoc:
 @objc(MBNextInstructionLabel)
-class NextInstructionLabel: InstructionLabel { }
+open class NextInstructionLabel: InstructionLabel { }
 
 /// :nodoc:
 @IBDesignable
 @objc(MBNextBannerView)
-class NextBannerView: UIView {
+open class NextBannerView: UIView {
     
     weak var maneuverView: ManeuverView!
     weak var instructionLabel: NextInstructionLabel!
@@ -17,7 +17,7 @@ class NextBannerView: UIView {
         commonInit()
     }
     
-    required init?(coder aDecoder: NSCoder) {
+    required public init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
         commonInit()
     }
@@ -28,6 +28,8 @@ class NextBannerView: UIView {
     }
     
     func setupViews() {
+        translatesAutoresizingMaskIntoConstraints = false
+        
         let maneuverView = ManeuverView()
         maneuverView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(maneuverView)
@@ -40,27 +42,30 @@ class NextBannerView: UIView {
         self.instructionLabel = instructionLabel
         
         instructionLabel.availableBounds = {
-            let height = ("|" as NSString).size(attributes: [NSFontAttributeName: self.instructionLabel.font]).height
+            let height = ("|" as NSString).size(withAttributes: [.font: self.instructionLabel.font]).height
             let availableWidth = self.bounds.width-self.maneuverView.frame.maxX-(16*2)
             return CGRect(x: 0, y: 0, width: availableWidth, height: height)
         }
     }
     
-    override func prepareForInterfaceBuilder() {
+    override open func prepareForInterfaceBuilder() {
         super.prepareForInterfaceBuilder()
         maneuverView.isEnd = true
         instructionLabel.text = "San Jose"
     }
     
     func setupLayout() {
-        heightAnchor.constraint(equalToConstant: 44).isActive = true
+        let heightConstraint = heightAnchor.constraint(equalToConstant: 44)
+        heightConstraint.priority = UILayoutPriority(rawValue: 999)
+        heightConstraint.isActive = true
         
-        maneuverView.leftAnchor.constraint(equalTo: leftAnchor, constant: 16).isActive = true
+        let midX = BaseInstructionsBannerView.padding + BaseInstructionsBannerView.maneuverViewSize.width / 2
+        maneuverView.centerXAnchor.constraint(equalTo: leftAnchor, constant: midX).isActive = true
         maneuverView.heightAnchor.constraint(equalToConstant: 22).isActive = true
         maneuverView.widthAnchor.constraint(equalToConstant: 22).isActive = true
         maneuverView.centerYAnchor.constraint(equalTo: centerYAnchor).isActive = true
         
-        instructionLabel.leftAnchor.constraint(equalTo: maneuverView.rightAnchor, constant: 16).isActive = true
+        instructionLabel.leftAnchor.constraint(equalTo: leftAnchor, constant: 70).isActive = true
         instructionLabel.centerYAnchor.constraint(equalTo: centerYAnchor).isActive = true
         instructionLabel.rightAnchor.constraint(equalTo: rightAnchor, constant: -16).isActive = true
     }

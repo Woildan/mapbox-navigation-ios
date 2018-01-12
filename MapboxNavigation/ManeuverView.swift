@@ -4,35 +4,36 @@ import MapboxCoreNavigation
 import SDWebImage
 import Turf
 
+/// :nodoc:
 @IBDesignable
 @objc(MBManeuverView)
 public class ManeuverView: UIView {
     
-    public dynamic var primaryColor: UIColor = .defaultTurnArrowPrimary {
+    @objc public dynamic var primaryColor: UIColor = .defaultTurnArrowPrimary {
         didSet {
             setNeedsDisplay()
         }
     }
     
-    public dynamic var secondaryColor: UIColor = .defaultTurnArrowSecondary {
+    @objc public dynamic var secondaryColor: UIColor = .defaultTurnArrowSecondary {
         didSet {
             setNeedsDisplay()
         }
     }
     
-    public var step: RouteStep? {
+    @objc public var step: RouteStep? {
         didSet {
             setNeedsDisplay()
         }
     }
     
-    public var isStart = false {
+    @objc public var isStart = false {
         didSet {
             setNeedsDisplay()
         }
     }
     
-    public var isEnd = false {
+    @objc public var isEnd = false {
         didSet {
             setNeedsDisplay()
         }
@@ -79,15 +80,18 @@ public class ManeuverView: UIView {
             switch direction {
             case .straightAhead:
                 ManeuversStyleKit.drawRoundabout(frame: bounds, resizing: resizing, primaryColor: primaryColor, secondaryColor: secondaryColor, roundabout_angle: 180)
+                flip = step.drivingSide == .left
             case .left, .slightLeft, .sharpLeft:
                 ManeuversStyleKit.drawRoundabout(frame: bounds, resizing: resizing, primaryColor: primaryColor, secondaryColor: secondaryColor, roundabout_angle: 275)
+                flip = step.drivingSide == .left
             default:
                 ManeuversStyleKit.drawRoundabout(frame: bounds, resizing: resizing, primaryColor: primaryColor, secondaryColor: secondaryColor, roundabout_angle: 90)
+                flip = step.drivingSide == .left
             }
         case .arrive:
             switch direction {
             case .right:
-                ManeuversStyleKit.drawArrowright(frame: bounds, resizing: resizing, primaryColor: primaryColor)
+                ManeuversStyleKit.drawArriveright(frame: bounds, resizing: resizing, primaryColor: primaryColor)
             case .left:
                 ManeuversStyleKit.drawArriveright(frame: bounds, resizing: resizing, primaryColor: primaryColor)
                 flip = true
@@ -116,7 +120,7 @@ public class ManeuverView: UIView {
                 flip = true
             case .uTurn:
                 ManeuversStyleKit.drawArrow180right(frame: bounds, resizing: resizing, primaryColor: primaryColor)
-                flip = angle < 0
+                flip = step.drivingSide == .right
             default:
                 ManeuversStyleKit.drawArrowstraight(frame: bounds, resizing: resizing, primaryColor: primaryColor)
             }

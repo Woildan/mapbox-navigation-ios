@@ -15,7 +15,7 @@ open class NavigationRouteOptions: RouteOptions {
      - SeeAlso:
      [RouteOptions](https://www.mapbox.com/mapbox-navigation-ios/directions/0.10.1/Classes/RouteOptions.html)
      */
-    public override init(waypoints: [Waypoint], profileIdentifier: MBDirectionsProfileIdentifier? = .automobileAvoidingTraffic) {
+    @objc public override init(waypoints: [Waypoint], profileIdentifier: MBDirectionsProfileIdentifier? = .automobileAvoidingTraffic) {
         super.init(waypoints: waypoints.map {
             $0.coordinateAccuracy = -1
             return $0
@@ -25,7 +25,10 @@ open class NavigationRouteOptions: RouteOptions {
         routeShapeResolution = .full
         attributeOptions = [.congestionLevel, .expectedTravelTime]
         includesSpokenInstructions = true
+        locale = Locale.nationalizedCurrent
         distanceMeasurementSystem = Locale.current.usesMetricSystem ? .metric : .imperial
+        includesVisualInstructions = true
+        includesExitRoundaboutManeuver = true
     }
 
 
@@ -35,7 +38,7 @@ open class NavigationRouteOptions: RouteOptions {
      - SeeAlso:
      [RouteOptions](https://www.mapbox.com/mapbox-navigation-ios/directions/0.10.1/Classes/RouteOptions.html)
      */
-    public convenience init(locations: [CLLocation], profileIdentifier: MBDirectionsProfileIdentifier? = .automobileAvoidingTraffic) {
+    @objc public convenience init(locations: [CLLocation], profileIdentifier: MBDirectionsProfileIdentifier? = .automobileAvoidingTraffic) {
         self.init(waypoints: locations.map { Waypoint(location: $0) }, profileIdentifier: profileIdentifier)
     }
 
@@ -46,11 +49,11 @@ open class NavigationRouteOptions: RouteOptions {
      - SeeAlso:
      [RouteOptions](https://www.mapbox.com/mapbox-navigation-ios/directions/0.10.1/Classes/RouteOptions.html)
      */
-    public convenience init(coordinates: [CLLocationCoordinate2D], profileIdentifier: MBDirectionsProfileIdentifier? = .automobileAvoidingTraffic) {
+    @objc public convenience init(coordinates: [CLLocationCoordinate2D], profileIdentifier: MBDirectionsProfileIdentifier? = .automobileAvoidingTraffic) {
         self.init(waypoints: coordinates.map { Waypoint(coordinate: $0) }, profileIdentifier: profileIdentifier)
     }
 
-    public required init?(coder decoder: NSCoder) {
+    @objc public required init?(coder decoder: NSCoder) {
         super.init(coder: decoder)
     }
 }

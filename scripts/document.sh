@@ -4,6 +4,8 @@ set -e
 set -o pipefail
 set -u
 
+./scripts/update-guides.sh
+
 if [ -z `which jazzy` ]; then
     echo "Installing jazzy…"
     gem install jazzy
@@ -26,7 +28,7 @@ THEME=${JAZZY_THEME:-$DEFAULT_THEME}
 BASE_URL="https://www.mapbox.com/mapbox-navigation-ios"
 
 # Link to directions documentation
-DIRECTIONS_VERSION="0.9.1"
+DIRECTIONS_VERSION="0.15.1"
 DIRECTIONS_SYMBOLS="Directions|Route|RouteStep|RouteLeg|RouteOptions|Waypoint"
 
 rm -rf ${OUTPUT}
@@ -40,7 +42,7 @@ jazzy \
     --sdk iphonesimulator \
     --module-version ${SHORT_VERSION} \
     --github-file-prefix "https://github.com/mapbox/mapbox-navigation-ios/tree/${BRANCH}" \
-    --documentation=docs/guides/*.md \
+    --documentation=docs/{guides,examples}/*.md \
     --root-url "${BASE_URL}/navigation/${RELEASE_VERSION}/" \
     --theme ${THEME} \
     --output ${OUTPUT}
