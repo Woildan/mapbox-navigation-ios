@@ -17,7 +17,11 @@ cp -R "${BUILD_DIR}/${CONFIGURATION}-iphoneos/${TARGET_NAME}.framework" "${UNIVE
 # Step 3. Create universal binary file using lipo and place the combined executable in the copied framework directory
 lipo -create -output "${UNIVERSAL_OUTPUTFOLDER}/iOS/${TARGET_NAME}.framework/${TARGET_NAME}" "${BUILD_DIR}/${CONFIGURATION}-iphonesimulator/${TARGET_NAME}.framework/${TARGET_NAME}" "${BUILD_DIR}/${CONFIGURATION}-iphoneos/${TARGET_NAME}.framework/${TARGET_NAME}"
 
-# Step 4. Convenience step to copy the framework to the project's directory
-mkdir -p "${PROJECT_DIR}/pkg/"
+DESTINATION_DIR="pkg/Frameworks"
+echo "Creating ${DESTINATION_DIR}"
 
-cp -R "${UNIVERSAL_OUTPUTFOLDER}/iOS/${TARGET_NAME}.framework" "${PROJECT_DIR}/pkg/"
+mkdir -p ${DESTINATION_DIR}
+
+echo "Copying ${TARGET_NAME}.framework to ${DESTINATION_DIR}"
+
+cp -R "${UNIVERSAL_OUTPUTFOLDER}/iOS/${TARGET_NAME}.framework" "${DESTINATION_DIR}"
