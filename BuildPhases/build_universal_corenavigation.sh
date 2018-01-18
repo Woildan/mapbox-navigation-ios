@@ -14,6 +14,8 @@ xcodebuild -scheme "${TARGET_NAME}" -configuration ${CONFIGURATION} -sdk iphoneo
 # Step 2. Copy the framework structure (from iphoneos build) to the universal folder
 cp -R "${BUILD_DIR}/${CONFIGURATION}-iphoneos/${TARGET_NAME}.framework" "${UNIVERSAL_OUTPUTFOLDER}/iOS"
 
+cp -R "${BUILD_DIR}/${CONFIGURATION}-iphonesimulator/${TARGET_NAME}.framework/Modules/MapboxCoreNavigation.swiftmodule/" "${UNIVERSAL_OUTPUTFOLDER}/iOS/${TARGET_NAME}.framework/Modules/MapboxCoreNavigation.swiftmodule/"
+
 # Step 3. Create universal binary file using lipo and place the combined executable in the copied framework directory
 lipo -create -output "${UNIVERSAL_OUTPUTFOLDER}/iOS/${TARGET_NAME}.framework/${TARGET_NAME}" "${BUILD_DIR}/${CONFIGURATION}-iphonesimulator/${TARGET_NAME}.framework/${TARGET_NAME}" "${BUILD_DIR}/${CONFIGURATION}-iphoneos/${TARGET_NAME}.framework/${TARGET_NAME}"
 
