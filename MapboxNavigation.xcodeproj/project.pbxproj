@@ -6,6 +6,20 @@
 	objectVersion = 46;
 	objects = {
 
+/* Begin PBXAggregateTarget section */
+		80F68CF5201095F000D112B8 /* MapboxCoreNavigationUniversal */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 80F68CF8201095F000D112B8 /* Build configuration list for PBXAggregateTarget "MapboxCoreNavigationUniversal" */;
+			buildPhases = (
+				80F68CF92010965A00D112B8 /* ShellScript */,
+			);
+			dependencies = (
+			);
+			name = MapboxCoreNavigationUniversal;
+			productName = MapboxNavigationUniversal;
+		};
+/* End PBXAggregateTarget section */
+
 /* Begin PBXBuildFile section */
 		35002D611E5F6ADB0090E733 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 35002D5F1E5F6ADB0090E733 /* Assets.xcassets */; };
 		35002D621E5F6ADB0090E733 /* Base.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 35002D601E5F6ADB0090E733 /* Base.lproj */; };
@@ -1189,6 +1203,10 @@
 						LastSwiftMigration = 0910;
 						ProvisioningStyle = Automatic;
 					};
+					80F68CF5201095F000D112B8 = {
+						CreatedOnToolsVersion = 9.2;
+						ProvisioningStyle = Automatic;
+					};
 					C5ADFBC81DDCC7840011824B = {
 						CreatedOnToolsVersion = 8.1;
 						DevelopmentTeam = GJZR2MEM28;
@@ -1242,6 +1260,7 @@
 				352BBC461E5E78D700703DF1 /* Example-SwiftTests */,
 				352BBC541E5E78EA00703DF1 /* Example-Objective-CTests */,
 				35B711CE1E5E7AD2001EDA8D /* MapboxNavigationTests */,
+				80F68CF5201095F000D112B8 /* MapboxCoreNavigationUniversal */,
 			);
 		};
 /* End PBXProject section */
@@ -1404,6 +1423,19 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "/usr/local/bin/carthage copy-frameworks";
+		};
+		80F68CF92010965A00D112B8 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "sh scripts/build_universal_corenavigation.sh";
 		};
 		DA408F661FB3CA3C004D9661 /* Apply Mapbox Access Token */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -2037,6 +2069,22 @@
 			};
 			name = Release;
 		};
+		80F68CF6201095F000D112B8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		80F68CF7201095F000D112B8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 		C5ADFBDB1DDCC7840011824B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -2297,6 +2345,15 @@
 			buildConfigurations = (
 				35B711D81E5E7AD2001EDA8D /* Debug */,
 				35B711D91E5E7AD2001EDA8D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		80F68CF8201095F000D112B8 /* Build configuration list for PBXAggregateTarget "MapboxCoreNavigationUniversal" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				80F68CF6201095F000D112B8 /* Debug */,
+				80F68CF7201095F000D112B8 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
