@@ -8,4 +8,4 @@ git checkout master
 git pull origin master
 git merge upstream/master
 git push origin master
-
+git checkout -
