@@ -2,11 +2,10 @@ import UIKit
 import MapboxCoreNavigation
 import MapboxDirections
 
-
 /// :nodoc:
 @IBDesignable
-@objc(MBLanesContainerView)
-public class LanesContainerView: LanesView {
+@objc(MBLanesView)
+public class LanesView: UIView {
     weak var stackView: UIStackView!
     weak var separatorView: SeparatorView!
     
@@ -18,6 +17,15 @@ public class LanesContainerView: LanesView {
     required public init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
         commonInit()
+    }
+    
+    public override func prepareForInterfaceBuilder() {
+        super.prepareForInterfaceBuilder()
+
+        for _ in 0...4 {
+            let laneView = laneArrowView()
+            stackView.addArrangedSubview(laneView)
+        }
     }
     
     func laneArrowView() -> LaneView {
@@ -57,7 +65,11 @@ public class LanesContainerView: LanesView {
         separatorView.rightAnchor.constraint(equalTo: rightAnchor).isActive = true
     }
     
-    func updateLaneViews(step: RouteStep, durationRemaining: TimeInterval) {
+    func update(for currentLegProgress: RouteLegProgress) {
+        guard let step = currentLegProgress.upComingStep else { return }
+        guard !currentLegProgress.userHasArrivedAtWaypoint else { return }
+        let durationRemaining = currentLegProgress.currentStepProgress.durationRemaining
+        
         clearLaneViews()
         
         if let allLanes = step.intersections?.first?.approachLanes,
@@ -72,6 +84,30 @@ public class LanesContainerView: LanesView {
                 stackView.addArrangedSubview(laneView)
             }
         }
+        
+        if stackView.arrangedSubviews.count > 0 {
+            show()
+        } else {
+            hide()
+        }
+    }
+    
+    public func show(animated: Bool = true) {
+        guard isHidden == true else { return }
+        if animated {
+            UIView.defaultAnimation(0.3, animations: {
+                self.isHidden = false
+            }, completion: nil)
+        } else {
+            self.isHidden = false
+        }
+    }
+    
+    public func hide() {
+        guard isHidden == false else { return }
+        UIView.defaultAnimation(0.3, animations: {
+            self.isHidden = true
+        }, completion: nil)
     }
     
     fileprivate func clearLaneViews() {
@@ -80,4 +116,5 @@ public class LanesContainerView: LanesView {
             $0.removeFromSuperview()
         }
     }
+    
 }

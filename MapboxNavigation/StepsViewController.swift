@@ -21,7 +21,7 @@ open class StepsViewController: UIViewController {
     weak var dismissButton: DismissButton!
     weak var delegate: StepsViewControllerDelegate?
     
-    typealias CompletionHandler = () -> ()
+    typealias CompletionHandler = () -> Void
     
     let cellId = "StepTableViewCellId"
     var routeProgress: RouteProgress!
@@ -194,10 +194,12 @@ extension StepsViewController: UITableViewDataSource {
         return cell
     }
     
+    func instructionForArrivalInstruction(text: String?) -> VisualInstructionComponent {
+        return VisualInstructionComponent(type: .destination, text: text, imageURL: nil, maneuverType: .none, maneuverDirection: .none)
+    }
+    
     func updateCell(_ cell: StepTableViewCell, at indexPath: IndexPath) {
         let step = sections[indexPath.section][indexPath.row]
-        
-        cell.instructionsView.maneuverView.step = step
        
         let usePreviousLeg = indexPath.section != 0 && indexPath.row == 0
         let leg = routeProgress.route.legs[indexPath.section]
@@ -207,24 +209,24 @@ extension StepsViewController: UITableViewDataSource {
             let leg = routeProgress.route.legs[indexPath.section-1]
             let stepBefore = leg.steps[leg.steps.count-1]
             if let instructions = stepBefore.instructionsDisplayedAlongStep?.last {
-                let secondaryInstruction = step.maneuverType == .arrive && arrivalSecondaryInstruction != nil ? [VisualInstructionComponent(text: arrivalSecondaryInstruction, imageURL: nil)] : instructions.secondaryTextComponents
-                cell.instructionsView.set(instructions.primaryTextComponents, secondaryInstruction: secondaryInstruction)
+                cell.instructionsView.set(instructions)
+                cell.instructionsView.secondaryLabel.instruction = step.maneuverType == .arrive && arrivalSecondaryInstruction != nil ? [instructionForArrivalInstruction(text: arrivalSecondaryInstruction)] : instructions.secondaryTextComponents
             }
             cell.instructionsView.distance = stepBefore.distance
         } else {
             let leg = routeProgress.route.legs[indexPath.section]
             if let stepBefore = leg.steps.stepBefore(step) {
                 if let instructions = stepBefore.instructionsDisplayedAlongStep?.last {
-                    let secondaryInstruction = step.maneuverType == .arrive && arrivalSecondaryInstruction != nil ? [VisualInstructionComponent(text: arrivalSecondaryInstruction, imageURL: nil)] : instructions.secondaryTextComponents
-                    cell.instructionsView.set(instructions.primaryTextComponents, secondaryInstruction: secondaryInstruction)
+                    cell.instructionsView.set(instructions)
+                    cell.instructionsView.secondaryLabel.instruction = step.maneuverType == .arrive && arrivalSecondaryInstruction != nil ? [instructionForArrivalInstruction(text: arrivalSecondaryInstruction)] : instructions.secondaryTextComponents
                 }
                 cell.instructionsView.distance = stepBefore.distance
             } else {
-                cell.instructionsView.distance = nil
                 if let instructions = step.instructionsDisplayedAlongStep?.last {
-                    let secondaryInstruction = step.maneuverType == .arrive && arrivalSecondaryInstruction != nil ? [VisualInstructionComponent(text: arrivalSecondaryInstruction, imageURL: nil)] : instructions.secondaryTextComponents
-                    cell.instructionsView.set(instructions.primaryTextComponents, secondaryInstruction: secondaryInstruction)
+                    cell.instructionsView.set(instructions)
+                    cell.instructionsView.secondaryLabel.instruction = step.maneuverType == .arrive && arrivalSecondaryInstruction != nil ? [instructionForArrivalInstruction(text: arrivalSecondaryInstruction)] : instructions.secondaryTextComponents
                 }
+                cell.instructionsView.distance = nil
             }
         }
     }
@@ -295,6 +297,11 @@ open class StepTableViewCell: UITableViewCell {
         separatorView.leftAnchor.constraint(equalTo: instructionsView.primaryLabel.leftAnchor).isActive = true
         separatorView.bottomAnchor.constraint(equalTo: instructionsView.bottomAnchor).isActive = true
         separatorView.rightAnchor.constraint(equalTo: rightAnchor, constant: -18).isActive = true
+    }
+
+    open override func prepareForReuse() {
+        super.prepareForReuse()
+        instructionsView.set(nil)
     }
 }
 

@@ -23,7 +23,7 @@ class MapboxCoreNavigationTests: XCTestCase {
         expectation(forNotification: .routeControllerDidPassSpokenInstructionPoint, object: navigation) { (notification) -> Bool in
             XCTAssertEqual(notification.userInfo?.count, 1)
             
-            let routeProgress = notification.userInfo![RouteControllerDidPassSpokenInstructionPointRouteProgressKey] as? RouteProgress
+            let routeProgress = notification.userInfo![RouteControllerNotificationUserInfoKey.routeProgressKey] as? RouteProgress
             
             return routeProgress != nil && routeProgress?.currentLegProgress.userHasArrivedAtWaypoint == false
         }
@@ -45,7 +45,7 @@ class MapboxCoreNavigationTests: XCTestCase {
         expectation(forNotification: .routeControllerDidPassSpokenInstructionPoint, object: navigation) { (notification) -> Bool in
             XCTAssertEqual(notification.userInfo?.count, 1)
             
-            let routeProgress = notification.userInfo![RouteControllerDidPassSpokenInstructionPointRouteProgressKey] as? RouteProgress
+            let routeProgress = notification.userInfo![RouteControllerNotificationUserInfoKey.routeProgressKey] as? RouteProgress
             
             return routeProgress?.currentLegProgress.stepIndex == 2
         }
@@ -67,7 +67,7 @@ class MapboxCoreNavigationTests: XCTestCase {
         expectation(forNotification: .routeControllerDidPassSpokenInstructionPoint, object: navigation) { (notification) -> Bool in
             XCTAssertEqual(notification.userInfo?.count, 1)
             
-            let routeProgress = notification.userInfo![RouteControllerDidPassSpokenInstructionPointRouteProgressKey] as? RouteProgress
+            let routeProgress = notification.userInfo![RouteControllerNotificationUserInfoKey.routeProgressKey] as? RouteProgress
             
             return routeProgress?.currentLegProgress.stepIndex == 6
         }
@@ -95,7 +95,7 @@ class MapboxCoreNavigationTests: XCTestCase {
         expectation(forNotification: .routeControllerWillReroute, object: navigation) { (notification) -> Bool in
             XCTAssertEqual(notification.userInfo?.count, 1)
             
-            let location = notification.userInfo![RouteControllerNotificationLocationKey] as? CLLocation
+            let location = notification.userInfo![RouteControllerNotificationUserInfoKey.locationKey] as? CLLocation
             return location?.coordinate == secondLocation.coordinate
         }
         
@@ -107,20 +107,15 @@ class MapboxCoreNavigationTests: XCTestCase {
     }
     
     func testArrive() {
-        let bundle = Bundle(for: MapboxCoreNavigationTests.self)
-        let filePath = bundle.path(forResource: "tunnel", ofType: "json")!
-        
-        let locations = Array<CLLocation>.locations(from: filePath)!
+        route.accessToken = "foo"
+        let locations: [CLLocation] = route.coordinates!.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }
         let locationManager = ReplayLocationManager(locations: locations)
         locationManager.speedMultiplier = 20
         
-        let routeFilePath = bundle.path(forResource: "tunnel", ofType: "route")!
-        let route = NSKeyedUnarchiver.unarchiveObject(withFile: routeFilePath) as! Route
-        route.accessToken = "foo"
         let navigation = RouteController(along: route, directions: directions, locationManager: locationManager)
         
         expectation(forNotification: .routeControllerProgressDidChange, object: navigation) { (notification) -> Bool in
-            let routeProgress = notification.userInfo![RouteControllerDidPassSpokenInstructionPointRouteProgressKey] as? RouteProgress
+            let routeProgress = notification.userInfo![RouteControllerNotificationUserInfoKey.routeProgressKey] as? RouteProgress
             return routeProgress != nil
         }
         

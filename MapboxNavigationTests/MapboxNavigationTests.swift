@@ -1,7 +1,6 @@
 import XCTest
 import FBSnapshotTestCase
 import MapboxDirections
-import SDWebImage
 @testable import MapboxNavigation
 @testable import MapboxCoreNavigation
 
@@ -14,54 +13,32 @@ let directions = Directions(accessToken: bogusToken)
 let route = Route(json: jsonRoute, waypoints: [waypoint1, waypoint2], routeOptions: RouteOptions(waypoints: [waypoint1, waypoint2]))
 
 class MapboxNavigationTests: FBSnapshotTestCase {
-    
-    var shieldImage: UIImage {
-        get {
-            let bundle = Bundle(for: MapboxNavigationTests.self)
-            return UIImage(named: "80px-I-280", in: bundle, compatibleWith: nil)!
-        }
-    }
-    
+
     override func setUp() {
         super.setUp()
-        // Put setup code here. This method is called before the invocation of each test method in the class.
         recordMode = false
         isDeviceAgnostic = true
-        
-        SDImageCache.shared().store(shieldImage, forKey: "I280")
     }
-    
+
+    override func tearDown() {
+        super.tearDown()
+
+    }
+
     func storyboard() -> UIStoryboard {
         return UIStoryboard(name: "Navigation", bundle: .mapboxNavigation)
     }
-    
+
     func testLanes() {
         let controller = storyboard().instantiateViewController(withIdentifier: "RouteMapViewController") as! RouteMapViewController
         XCTAssert(controller.view != nil)
-        
+
         route.accessToken = bogusToken
         let routeController = RouteController(along: route, directions: directions)
-        let steps = routeController.routeProgress.currentLeg.steps
-        let stepWithLanes = steps[8]
-        controller.updateLaneViews(step: stepWithLanes, durationRemaining: 20)
-        controller.showLaneViews(animated: false)
-        
-        FBSnapshotVerifyView(controller.laneViewsContainerView)
-    }
-}
+        routeController.advanceStepIndex(to: 7)
+        controller.lanesView.update(for: routeController.routeProgress.currentLegProgress)
+        controller.lanesView.show()
 
-
-
-extension CLLocationCoordinate2D {
-    static var unionSquare: CLLocationCoordinate2D {
-        return CLLocationCoordinate2D(latitude: 37.786902, longitude: -122.407668)
-    }
-    
-    static var goldenGatePark: CLLocationCoordinate2D {
-        return CLLocationCoordinate2D(latitude: 37.770935, longitude: -122.479346)
-    }
-    
-    static var bernalHeights: CLLocationCoordinate2D {
-        return CLLocationCoordinate2D(latitude: 37.739912, longitude: -122.420100)
+        FBSnapshotVerifyView(controller.lanesView)
     }
 }

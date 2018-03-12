@@ -4,25 +4,13 @@ import MapboxDirections
 import MapboxCoreNavigation
 import Turf
 
-typealias CongestionSegment = ([CLLocationCoordinate2D], CongestionLevel)
-
-let routeLineWidthAtZoomLevels: [Int: MGLStyleValue<NSNumber>] = [
-    10: MGLStyleValue(rawValue: 8),
-    13: MGLStyleValue(rawValue: 9),
-    16: MGLStyleValue(rawValue: 11),
-    19: MGLStyleValue(rawValue: 22),
-    22: MGLStyleValue(rawValue: 28)
-]
-
-let sourceOptions: [MGLShapeSourceOption: Any] = [.maximumZoomLevel: 16]
-
 /**
  `NavigationMapView` is a subclass of `MGLMapView` with convenience functions for adding `Route` lines to a map.
  */
 @objc(MBNavigationMapView)
 open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
     
-    //MARK: Class Constants
+    // MARK: Class Constants
     
     /**
      Returns the altitude that the map camera initally defaults to.
@@ -40,11 +28,23 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
     @objc public static let longManeuverDistance: CLLocationDistance = 1000.0
     
     /**
-     Maximum distnace the user can tap for a selection to be valid when selecting an alternate route.
+     Maximum distance the user can tap for a selection to be valid when selecting an alternate route.
      */
     @objc public var tapGestureDistanceThreshold: CGFloat = 50
     
-    //MARK: Instance Properties
+    /**
+     The object that acts as the navigation delegate of the map view.
+     */
+    public weak var navigationMapDelegate: NavigationMapViewDelegate?
+    
+    /**
+     The object that acts as the course tracking delegate of the map view.
+     */
+    public weak var courseTrackingDelegate: NavigationMapViewCourseTrackingDelegate?
+    
+    let sourceOptions: [MGLShapeSourceOption: Any] = [.maximumZoomLevel: 16]
+    
+    // MARK: Instance Properties
     let sourceIdentifier = "routeSource"
     let sourceCasingIdentifier = "routeCasingSource"
     let routeLayerIdentifier = "routeLayer"
@@ -59,20 +59,11 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
     let arrowLayerStrokeIdentifier = "arrowStrokeLayer"
     let arrowCasingSymbolLayerIdentifier = "arrowCasingSymbolLayer"
     let arrowSymbolSourceIdentifier = "arrowSymbolSource"
-    let currentLegAttribute = "isCurrentLeg"
     let instructionSource = "instructionSource"
     let instructionLabel = "instructionLabel"
     let instructionCircle = "instructionCircle"
     let alternateSourceIdentifier = "alternateSource"
     let alternateLayerIdentifier = "alternateLayer"
-
-    let routeLineWidthAtZoomLevels: [Int: MGLStyleValue<NSNumber>] = [
-        10: MGLStyleValue(rawValue: 8),
-        13: MGLStyleValue(rawValue: 9),
-        16: MGLStyleValue(rawValue: 12),
-        19: MGLStyleValue(rawValue: 24),
-        22: MGLStyleValue(rawValue: 30)
-    ]
     
     @objc dynamic public var trafficUnknownColor: UIColor = .trafficUnknown
     @objc dynamic public var trafficLowColor: UIColor = .trafficLow
@@ -160,7 +151,7 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
     @objc func progressDidChange(_ notification: Notification) {
         guard tracksUserCourse else { return }
         
-        let routeProgress = notification.userInfo![RouteControllerProgressDidChangeNotificationProgressKey] as! RouteProgress
+        let routeProgress = notification.userInfo![RouteControllerNotificationUserInfoKey.routeProgressKey] as! RouteProgress
         
         let stepProgress = routeProgress.currentLegProgress.currentStepProgress
         let expectedTravelTime = stepProgress.step.expectedTravelTime
@@ -266,9 +257,6 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
         }
     }
     
-    public weak var navigationMapDelegate: NavigationMapViewDelegate?
-    weak var courseTrackingDelegate: NavigationMapViewCourseTrackingDelegate!
-    
     open override var showsUserLocation: Bool {
         get {
             if tracksUserCourse || userLocationForCourseTracking != nil {
@@ -291,7 +279,7 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
         }
     }
     
-    @objc func disableUserCourseTracking() {
+    @objc private func disableUserCourseTracking() {
         tracksUserCourse = false
     }
     
@@ -317,14 +305,19 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
         }, completion: nil)
         
         if let userCourseView = userCourseView as? UserCourseView {
-            userCourseView.update?(location: location, pitch: camera.pitch, direction: direction, animated: animated, tracksUserCourse: tracksUserCourse)
+            if let customTransformation = userCourseView.update?(location: location, pitch: camera.pitch, direction: direction, animated: animated, tracksUserCourse: tracksUserCourse) {
+                customTransformation
+            } else {
+                self.userCourseView?.applyDefaultUserPuckTransformation(location: location, pitch: camera.pitch, direction: direction, animated: animated, tracksUserCourse: tracksUserCourse)
+            }
         } else {
-            userCourseView?.updateCourseView(location: location, pitch: camera.pitch, direction: direction, animated: animated, tracksUserCourse: tracksUserCourse)
+            userCourseView?.applyDefaultUserPuckTransformation(location: location, pitch: camera.pitch, direction: direction, animated: animated, tracksUserCourse: tracksUserCourse)
         }
     }
     
     /**
      Center point of the user course view in screen coordinates relative to the map view.
+     - seealso: NavigationMapViewDelegate.navigationMapViewUserAnchorPoint(_:)
      */
     var userAnchorPoint: CGPoint {
         if let anchorPoint = navigationMapDelegate?.navigationMapViewUserAnchorPoint?(self), anchorPoint != .zero {
@@ -347,15 +340,19 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
                               contentFrame.minY + contentFrame.height * 0.5))
     }
     
-    var tracksUserCourse: Bool = false {
+    /**
+     Determines whether the map should follow the user location and rotate when the course changes.
+     - seealso: NavigationMapViewCourseTrackingDelegate
+     */
+    open var tracksUserCourse: Bool = false {
         didSet {
             if tracksUserCourse {
-                enableFrameByFrameCourseViewTracking(for: 3)
+                enableFrameByFrameCourseViewTracking(for: 2)
                 altitude = NavigationMapView.defaultAltitude
                 showsUserLocation = true
-                courseTrackingDelegate?.navigationMapViewDidStartTrackingCourse(self)
+                courseTrackingDelegate?.navigationMapViewDidStartTrackingCourse?(self)
             } else {
-                courseTrackingDelegate?.navigationMapViewDidStopTrackingCourse(self)
+                courseTrackingDelegate?.navigationMapViewDidStopTrackingCourse?(self)
             }
             
             if let location = userLocationForCourseTracking {
@@ -380,7 +377,13 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
      */
     @objc public var userCourseView: UIView? {
         didSet {
+            oldValue?.removeFromSuperview()
             if let userCourseView = userCourseView {
+                if let location = userLocationForCourseTracking {
+                    updateCourseTracking(location: location, animated: false)
+                } else {
+                    userCourseView.center = userAnchorPoint
+                }
                 addSubview(userCourseView)
             }
         }
@@ -388,7 +391,7 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
     
     var routes: [Route]?
     
-    //MARK: TapGestureRecognizer
+    // MARK: TapGestureRecognizer
     
     /**
      Fired when NavigationMapView detects a tap not handled elsewhere by other gesture recognizers.
@@ -458,7 +461,7 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
         return candidates
     }
     
-    //MARK: Feature Addition/Removal
+    // MARK: Feature Addition/Removal
     
     /**
      Adds or updates both the route line and the route line casing
@@ -637,6 +640,9 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
         guard let style = style else {
             return
         }
+
+        guard let triangleImage = Bundle.mapboxNavigation.image(named: "triangle")?.withRenderingMode(.alwaysTemplate) else { return }
+        style.setImage(triangleImage, forName: "triangle-tip-navigation")
         
         guard step.maneuverType != .arrive else { return }
         
@@ -672,7 +678,7 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
                 arrow.lineCap = MGLStyleValue(rawValue: cap)
                 arrow.lineJoin = MGLStyleValue(rawValue: join)
                 arrow.lineWidth = MGLStyleValue(interpolationMode: .exponential,
-                                                cameraStops: routeLineWidthAtZoomLevels.multiplied(by: 0.70),
+                                                cameraStops: MBRouteLineWidthByZoomLevel.multiplied(by: 0.70),
                                                 options: [.defaultValue : MGLConstantStyleValue<NSNumber>(rawValue: 1.5)])
                 arrow.lineColor = MGLStyleValue(rawValue: .white)
                 
@@ -688,7 +694,7 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
                 arrowStroke.lineCap = MGLStyleValue(rawValue: cap)
                 arrowStroke.lineJoin = MGLStyleValue(rawValue: join)
                 arrowStroke.lineWidth = MGLStyleValue(interpolationMode: .exponential,
-                                                      cameraStops: routeLineWidthAtZoomLevels.multiplied(by: 0.80),
+                                                      cameraStops: MBRouteLineWidthByZoomLevel.multiplied(by: 0.80),
                                                       options: [.defaultValue : MGLConstantStyleValue<NSNumber>(rawValue: 1.5)])
                 arrowStroke.lineColor = MGLStyleValue(rawValue: .defaultArrowStroke)
                 
@@ -717,10 +723,9 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
                 arrowSymbolLayer.iconRotationAlignment = MGLStyleValue(rawValue: NSValue(mglIconRotationAlignment: .map))
                 arrowSymbolLayer.iconRotation = MGLStyleValue(rawValue: shaftDirection as NSNumber)
                 arrowSymbolLayer.iconScale = MGLStyleValue(interpolationMode: .exponential,
-                                                           cameraStops: routeLineWidthAtZoomLevels.multiplied(by: 0.12),
+                                                           cameraStops: MBRouteLineWidthByZoomLevel.multiplied(by: 0.12),
                                                            options: [.defaultValue : MGLConstantStyleValue<NSNumber>(rawValue: 0.2)])
                 arrowSymbolLayer.iconAllowsOverlap = MGLStyleValue(rawValue: true)
-                
                 
                 let arrowSymbolLayerCasing = MGLSymbolStyleLayer(identifier: arrowCasingSymbolLayerIdentifier, source: arrowSymbolSource)
                 arrowSymbolLayerCasing.minimumZoomLevel = minimumZoomLevel
@@ -729,7 +734,7 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
                 arrowSymbolLayerCasing.iconRotationAlignment = MGLStyleValue(rawValue: NSValue(mglIconRotationAlignment: .map))
                 arrowSymbolLayerCasing.iconRotation = MGLStyleValue(rawValue: shaftDirection as NSNumber)
                 arrowSymbolLayerCasing.iconScale = MGLStyleValue(interpolationMode: .exponential,
-                                                                 cameraStops: routeLineWidthAtZoomLevels.multiplied(by: 0.14),
+                                                                 cameraStops: MBRouteLineWidthByZoomLevel.multiplied(by: 0.14),
                                                                  options: [.defaultValue : MGLConstantStyleValue<NSNumber>(rawValue: 0.2)])
                 arrowSymbolLayerCasing.iconAllowsOverlap = MGLStyleValue(rawValue: true)
                 
@@ -740,7 +745,6 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
             
         }
     }
-    
     
     /**
      Removes the step arrow from the map.
@@ -779,7 +783,7 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
         }
     }
     
-    //MARK: Utility Methods
+    // MARK: Utility Methods
     
     func shape(describing route: Route, legIndex: Int?) -> MGLShape? {
         guard let coordinates = route.coordinates else { return nil }
@@ -826,11 +830,11 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
             
             let lines = mergedCongestionSegments.map { (congestionSegment: CongestionSegment) -> MGLPolylineFeature in
                 let polyline = MGLPolylineFeature(coordinates: congestionSegment.0, count: UInt(congestionSegment.0.count))
-                polyline.attributes["congestion"] = String(describing: congestionSegment.1)
+                polyline.attributes[MBCongestionAttribute] = String(describing: congestionSegment.1)
                 if let legIndex = legIndex {
-                    polyline.attributes[currentLegAttribute] = index == legIndex
+                    polyline.attributes[MBCurrentLegAttribute] = index == legIndex
                 } else {
-                    polyline.attributes[currentLegAttribute] = index == 0
+                    polyline.attributes[MBCurrentLegAttribute] = index == 0
                 }
                 return polyline
             }
@@ -851,9 +855,9 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
             
             let polyline = MGLPolylineFeature(coordinates: legCoordinates, count: UInt(legCoordinates.count))
             if let legIndex = legIndex {
-                polyline.attributes[currentLegAttribute] = index == legIndex
+                polyline.attributes[MBCurrentLegAttribute] = index == legIndex
             } else {
-                polyline.attributes[currentLegAttribute] = index == 0
+                polyline.attributes[MBCurrentLegAttribute] = index == 0
             }
             linesPerLeg.append(polyline)
         }
@@ -880,7 +884,7 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
         
         // Take the default line width and make it wider for the casing
         lineCasing.lineWidth = MGLStyleValue(interpolationMode: .exponential,
-                                             cameraStops: routeLineWidthAtZoomLevels.multiplied(by: 0.85),
+                                             cameraStops: MBRouteLineWidthByZoomLevel.multiplied(by: 0.85),
                                              options: [.defaultValue : MGLConstantStyleValue<NSNumber>(rawValue: 1.5)])
         
         lineCasing.lineColor = MGLStyleValue(rawValue: routeAlternateColor)
@@ -920,7 +924,7 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
         
         let line = MGLLineStyleLayer(identifier: identifier, source: source)
         line.lineWidth = MGLStyleValue(interpolationMode: .exponential,
-                                       cameraStops: routeLineWidthAtZoomLevels,
+                                       cameraStops: MBRouteLineWidthByZoomLevel,
                                        options: [.defaultValue : MGLConstantStyleValue<NSNumber>(rawValue: 1.5)])
         
         line.lineColor = MGLStyleValue(interpolationMode: .categorical, sourceStops: [
@@ -929,12 +933,12 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
             "moderate": MGLStyleValue(rawValue: trafficModerateColor),
             "heavy": MGLStyleValue(rawValue: trafficHeavyColor),
             "severe": MGLStyleValue(rawValue: trafficSevereColor)
-            ], attributeName: "congestion", options: [.defaultValue: MGLStyleValue(rawValue: trafficUnknownColor)])
+            ], attributeName: MBCongestionAttribute, options: [.defaultValue: MGLStyleValue(rawValue: trafficUnknownColor)])
         
         line.lineOpacity = MGLStyleValue(interpolationMode: .categorical, sourceStops: [
             true: MGLStyleValue(rawValue: 1),
             false: MGLStyleValue(rawValue: 0)
-            ], attributeName: currentLegAttribute, options: nil)
+            ], attributeName: MBCurrentLegAttribute, options: nil)
         
         line.lineJoin = MGLStyleValue(rawValue: NSValue(mglLineJoin: .round))
         
@@ -947,7 +951,7 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
         
         // Take the default line width and make it wider for the casing
         lineCasing.lineWidth = MGLStyleValue(interpolationMode: .exponential,
-                                             cameraStops: routeLineWidthAtZoomLevels.multiplied(by: 1.5),
+                                             cameraStops: MBRouteLineWidthByZoomLevel.multiplied(by: 1.5),
                                              options: [.defaultValue : MGLConstantStyleValue<NSNumber>(rawValue: 1.5)])
         
         lineCasing.lineColor = MGLStyleValue(rawValue: routeCasingColor)
@@ -957,9 +961,78 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
         lineCasing.lineOpacity = MGLStyleValue(interpolationMode: .categorical, sourceStops: [
             true: MGLStyleValue(rawValue: 1),
             false: MGLStyleValue(rawValue: 0.85)
-            ], attributeName: currentLegAttribute, options: nil)
+            ], attributeName: MBCurrentLegAttribute, options: nil)
         
         return lineCasing
+    }
+    
+    /**
+     Attempts to localize road labels into the local language and other labels
+     into the system’s preferred language.
+     
+     When this property is enabled, the style automatically modifies the `text`
+     property of any symbol style layer whose source is the
+     <a href="https://www.mapbox.com/vector-tiles/mapbox-streets-v7/#overview">Mapbox
+     Streets source</a>. On iOS, the user can set the system’s preferred
+     language in Settings, General Settings, Language & Region.
+     
+     Unlike the `MGLStyle.localizesLabels` property, this method localizes road
+     labels into the local language, regardless of the system’s preferred
+     language, in an effort to match road signage. The turn banner always
+     displays road names and exit destinations in the local language, so you
+     should call this method in the
+     `MGLMapViewDelegate.mapView(_:didFinishLoading:)` method of any delegate of
+     a standalone `NavigationMapView`. The map view embedded in
+     `NavigationViewController` is localized automatically, so you do not need
+     to call this method on the value of `NavigationViewController.mapView`.
+     */
+    @objc public func localizeLabels() {
+        guard let style = style else {
+            return
+        }
+        
+        let streetsSourceIdentifiers = style.sources.flatMap {
+            $0 as? MGLVectorSource
+        }.filter {
+            $0.isMapboxStreets
+        }.map {
+            $0.identifier
+        }
+        
+        for layer in style.layers where layer is MGLSymbolStyleLayer {
+            let layer = layer as! MGLSymbolStyleLayer
+            guard let sourceIdentifier = layer.sourceIdentifier,
+                streetsSourceIdentifiers.contains(sourceIdentifier) else {
+                continue
+            }
+            
+            let token: String
+            if layer.sourceLayerIdentifier == "road_label" {
+                token = "{name}"
+            } else if let language = MGLVectorSource.preferredMapboxStreetsLanguage {
+                token = "{name_\(language)}"
+            } else {
+                token = "{name}"
+            }
+            
+            if let value = layer.text as? MGLConstantStyleValue<NSString>, value.rawValue.contains("{name") {
+                layer.text = MGLStyleValue(rawValue: token as NSString)
+            } else if let function = layer.text as? MGLCameraStyleFunction<NSString> {
+                var localizedStops = function.stops
+                var hasName = false
+                for (zoomLevel, value) in localizedStops {
+                    let value = value as! MGLConstantStyleValue<NSString>
+                    if value.rawValue.contains("{name") {
+                        hasName = true
+                        localizedStops[zoomLevel] = MGLStyleValue(rawValue: token as NSString)
+                    }
+                }
+                if hasName {
+                    function.stops = localizedStops
+                    layer.text = function
+                }
+            }
+        }
     }
     
     @objc public func showVoiceInstructionsOnMap(route: Route) {
@@ -1005,56 +1078,147 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
             style.addLayer(symbol)
         }
     }
-}
-
-//MARK: Extensions
-
-extension Dictionary where Key == Int, Value: MGLStyleValue<NSNumber> {
-    func multiplied(by factor: Double) -> Dictionary {
-        var newCameraStop:[Int:MGLStyleValue<NSNumber>] = [:]
-        for stop in routeLineWidthAtZoomLevels {
-            let f = stop.value as! MGLConstantStyleValue
-            let newValue =  f.rawValue.doubleValue * factor
-            newCameraStop[stop.key] = MGLStyleValue<NSNumber>(rawValue: NSNumber(value:newValue))
-        }
-        return newCameraStop as! Dictionary<Key, Value>
+    
+    /**
+     Sets the camera directly over a series of coordinates.
+     */
+    @objc public func setOverheadCameraView(from userLocation: CLLocationCoordinate2D, along coordinates: [CLLocationCoordinate2D], for bounds: UIEdgeInsets) {
+        let slicedLine = Polyline(coordinates).sliced(from: userLocation).coordinates
+        let line = MGLPolyline(coordinates: slicedLine, count: UInt(slicedLine.count))
+        
+        tracksUserCourse = false
+        let camera = self.camera
+        camera.pitch = 0
+        camera.heading = 0
+        self.camera = camera
+        
+        // Don't keep zooming in
+        guard line.overlayBounds.ne.distance(to: line.overlayBounds.sw) > NavigationMapViewMinimumDistanceForOverheadZooming else { return }
+        
+        setVisibleCoordinateBounds(line.overlayBounds, edgePadding: bounds, animated: true)
     }
 }
 
-//MARK: NavigationMapViewDelegate
-
+/**
+ The `NavigationMapViewDelegate` provides methods for configuring the NavigationMapView, as well as responding to events triggered by the NavigationMapView.
+ */
 @objc(MBNavigationMapViewDelegate)
-public protocol NavigationMapViewDelegate: class  {
+public protocol NavigationMapViewDelegate: class {
+    /**
+     Asks the receiver to return an MGLStyleLayer for routes, given an identifier and source.
+     This method is invoked when the map view loads and any time routes are added.
+     - parameter mapView: The NavigationMapView.
+     - parameter identifier: The style identifier.
+     - parameter source: The Layer source containing the route data that this method would style.
+     - returns: An MGLStyleLayer that the map applies to all routes.
+     */
     @objc optional func navigationMapView(_ mapView: NavigationMapView, routeStyleLayerWithIdentifier identifier: String, source: MGLSource) -> MGLStyleLayer?
     
+    /**
+     Asks the receiver to return an MGLStyleLayer for waypoints, given an identifier and source.
+     This method is invoked when the map view loads and any time waypoints are added.
+     - parameter mapView: The NavigationMapView.
+     - parameter identifier: The style identifier.
+     - parameter source: The Layer source containing the waypoint data that this method would style.
+     - returns: An MGLStyleLayer that the map applies to all waypoints.
+     */
     @objc optional func navigationMapView(_ mapView: NavigationMapView, waypointStyleLayerWithIdentifier identifier: String, source: MGLSource) -> MGLStyleLayer?
     
+    /**
+     Asks the receiver to return an MGLStyleLayer for waypoint symbols, given an identifier and source.
+     This method is invoked when the map view loads and any time waypoints are added.
+     - parameter mapView: The NavigationMapView.
+     - parameter identifier: The style identifier.
+     - parameter source: The Layer source containing the waypoint data that this method would style.
+     - returns: An MGLStyleLayer that the map applies to all waypoint symbols.
+     */
     @objc optional func navigationMapView(_ mapView: NavigationMapView, waypointSymbolStyleLayerWithIdentifier identifier: String, source: MGLSource) -> MGLStyleLayer?
     
+    /**
+     Asks the receiver to return an MGLStyleLayer for route casings, given an identifier and source.
+     This method is invoked when the map view loads and anytime routes are added.
+     - note: Specify a casing to ensure good contrast between the route line and the underlying map layers.
+     - parameter mapView: The NavigationMapView.
+     - parameter identifier: The style identifier.
+     - parameter source: The Layer source containing the route data that this method would style.
+     - returns: An MGLStyleLayer that the map applies to the route.
+     */
     @objc optional func navigationMapView(_ mapView: NavigationMapView, routeCasingStyleLayerWithIdentifier identifier: String, source: MGLSource) -> MGLStyleLayer?
     
+    /**
+     Tells the receiver that the user has selected a route by interacting with the map view.
+     - parameter mapView: The NavigationMapView.
+     - parameter route: The route that was selected.
+    */
     @objc(navigationMapView:didSelectRoute:)
     optional func navigationMapView(_ mapView: NavigationMapView, didSelect route: Route)
     
+    /**
+     Tells the receiver that a waypoint was selected.
+     - parameter mapView: The NavigationMapView.
+     - parameter waypoint: The waypoint that was selected.
+     */
     @objc(navigationMapView:didSelectWaypoint:)
     optional func navigationMapView(_ mapView: NavigationMapView, didSelect waypoint: Waypoint)
     
+    /**
+     Asks the receiver to return an MGLShape that describes the geometry of the route.
+     - note: The returned value represents the route in full detail. For example, individual `MGLPolyline` objects in an `MGLShapeCollectionFeature` object can represent traffic congestion segments. For improved performance, you should also implement `navigationMapView(_:simplifiedShapeDescribing:)`, which defines the overall route as a single feature.
+     - parameter mapView: The NavigationMapView.
+     - parameter route: The route that the sender is asking about.
+     - returns: Optionally, a `MGLShape` that defines the shape of the route, or `nil` to use default behavior.
+     */
     @objc(navigationMapView:shapeDescribingRoute:)
     optional func navigationMapView(_ mapView: NavigationMapView, shapeDescribing route: Route) -> MGLShape?
     
+    /**
+     Asks the receiver to return an MGLShape that describes the geometry of the route at lower zoomlevels.
+     - note: The returned value represents the simplfied route. It is designed to be used with `navigationMapView(_:shapeDescribing:), and if used without its parent method, can cause unexpected behavior.
+     - parameter mapView: The NavigationMapView.
+     - parameter route: The route that the sender is asking about.
+     - returns: Optionally, a `MGLShape` that defines the shape of the route at lower zoomlevels, or `nil` to use default behavior.
+     */
     @objc(navigationMapView:simplifiedShapeDescribingRoute:)
     optional func navigationMapView(_ mapView: NavigationMapView, simplifiedShapeDescribing route: Route) -> MGLShape?
     
+    /**
+     Asks the receiver to return an MGLShape that describes the geometry of the waypoint.
+     - parameter mapView: The NavigationMapView.
+     - parameter waypoints: The waypoints to be displayed on the map.
+     - returns: Optionally, a `MGLShape` that defines the shape of the waypoint, or `nil` to use default behavior.
+     */
     @objc(navigationMapView:shapeDescribingWaypoints:)
     optional func navigationMapView(_ mapView: NavigationMapView, shapeFor waypoints: [Waypoint]) -> MGLShape?
     
+    /**
+     Asks the receiver to return a CGPoint to serve as the anchor for the user icon.
+     - important: The return value should be returned in the normal UIKit coordinate-space, NOT CoreAnimation's unit coordinate-space.
+     - parameter mapView: The NavigationMapView.
+     - returns: A CGPoint (in regular coordinate-space) that represents the point on-screen where the user location icon should be drawn.
+    */
     @objc(navigationMapViewUserAnchorPoint:)
     optional func navigationMapViewUserAnchorPoint(_ mapView: NavigationMapView) -> CGPoint
 }
 
-//MARK: NavigationMapViewCourseTrackingDelegate
-
-protocol NavigationMapViewCourseTrackingDelegate: class {
-    func navigationMapViewDidStartTrackingCourse(_ mapView: NavigationMapView)
-    func navigationMapViewDidStopTrackingCourse(_ mapView: NavigationMapView)
+// MARK: NavigationMapViewCourseTrackingDelegate
+/**
+ The `NavigationMapViewCourseTrackingDelegate` provides methods for responding to the `NavigationMapView` starting or stopping course tracking.
+ */
+@objc(MBNavigationMapViewCourseTrackingDelegate)
+public protocol NavigationMapViewCourseTrackingDelegate: class {
+    /**
+     Tells the receiver that the map is now tracking the user course.
+     - seealso: NavigationMapView.tracksUserCourse
+     - parameter mapView: The NavigationMapView.
+     */
+    @objc(navigationMapViewDidStartTrackingCourse:)
+    optional func navigationMapViewDidStartTrackingCourse(_ mapView: NavigationMapView)
+    
+    /**
+     Tells the receiver that `tracksUserCourse` was set to false, signifying that the map is no longer tracking the user course.
+     - seealso: NavigationMapView.tracksUserCourse
+     - parameter mapView: The NavigationMapView.
+     */
+    @objc(navigationMapViewDidStopTrackingCourse:)
+    optional func navigationMapViewDidStopTrackingCourse(_ mapView: NavigationMapView)
 }

@@ -1,5 +1,6 @@
 import UIKit
 import MapboxCoreNavigation
+import MapboxNavigation
 import Mapbox
 import CoreLocation
 import AVFoundation
@@ -12,15 +13,15 @@ class CustomViewController: UIViewController, MGLMapViewDelegate, AVSpeechSynthe
     var routeController: RouteController!
 
     let textDistanceFormatter = DistanceFormatter(approximate: true)
-    lazy var speechSynth = AVSpeechSynthesizer()
     var userRoute: Route?
     var simulateLocation = false
-    
+
+    // Start voice instructions
+    let voiceController = MapboxVoiceController()
+
     @IBOutlet var mapView: MGLMapView!
-    @IBOutlet weak var arrowView: UILabel!
-    @IBOutlet weak var instructionLabel: UILabel!
-    @IBOutlet weak var distanceLabel: UILabel!
     @IBOutlet weak var cancelButton: UIButton!
+    @IBOutlet weak var instructionsBannerView: InstructionsBannerView!
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -28,11 +29,11 @@ class CustomViewController: UIViewController, MGLMapViewDelegate, AVSpeechSynthe
         mapView.delegate = self
 
         textDistanceFormatter.numberFormatter.maximumFractionDigits = 0
-        
+
         let locationManager = simulateLocation ? SimulatedLocationManager(route: userRoute!) : NavigationLocationManager()
-        
+
         routeController = RouteController(along: userRoute!, directions: directions, locationManager: locationManager)
-        
+
         mapView.userLocationVerticalAlignment = .center
         mapView.userTrackingMode = .followWithCourse
 
@@ -41,10 +42,10 @@ class CustomViewController: UIViewController, MGLMapViewDelegate, AVSpeechSynthe
         // Start navigation
         routeController.resume()
     }
-    
+
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        
+
         // Disable the map view's default location manager if we're simulating locations
         if simulateLocation {
             mapView.locationManager.stopUpdatingHeading()
@@ -58,13 +59,11 @@ class CustomViewController: UIViewController, MGLMapViewDelegate, AVSpeechSynthe
     }
 
     func resumeNotifications() {
-        NotificationCenter.default.addObserver(self, selector: #selector(shouldSpeak(_:)), name: .routeControllerDidPassSpokenInstructionPoint, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(progressDidChange(_ :)), name: .routeControllerProgressDidChange, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(rerouted(_:)), name: .routeControllerWillReroute, object: nil)
     }
 
     func suspendNotifications() {
-        NotificationCenter.default.removeObserver(self, name: .routeControllerDidPassSpokenInstructionPoint, object: nil)
         NotificationCenter.default.removeObserver(self, name: .routeControllerProgressDidChange, object: nil)
         NotificationCenter.default.removeObserver(self, name: .routeControllerWillReroute, object: nil)
     }
@@ -73,54 +72,18 @@ class CustomViewController: UIViewController, MGLMapViewDelegate, AVSpeechSynthe
         addRouteToMap()
     }
 
-    // When an instruction should be given
-    @objc func shouldSpeak(_ notification: NSNotification) {
-        let routeProgress = notification.userInfo![MBRouteControllerDidPassSpokenInstructionPointRouteProgressKey] as! RouteProgress
-        
-        guard let text = routeProgress.currentLegProgress.currentStepProgress.currentSpokenInstruction?.text else { return }
-
-        let utterance = AVSpeechUtterance(string: text)
-        speechSynth.delegate = self
-        speechSynth.speak(utterance)
-    }
-
     // Notifications sent on all location updates
     @objc func progressDidChange(_ notification: NSNotification) {
-        let routeProgress = notification.userInfo![RouteControllerProgressDidChangeNotificationProgressKey] as! RouteProgress
-        let location = notification.userInfo![RouteControllerProgressDidChangeNotificationLocationKey] as! CLLocation
-        updateRouteProgress(routeProgress: routeProgress)
+        let routeProgress = notification.userInfo![RouteControllerNotificationUserInfoKey.routeProgressKey] as! RouteProgress
+        let location = notification.userInfo![RouteControllerNotificationUserInfoKey.locationKey] as! CLLocation
+        instructionsBannerView.update(for: routeProgress.currentLegProgress)
+
         mapView.locationManager(routeController.locationManager, didUpdateLocations: [location])
-    }
-
-    // Updates the turn banner with information about the next turn
-    func updateRouteProgress(routeProgress: RouteProgress) {
-        guard let step = routeProgress.currentLegProgress.upComingStep else { return }
-
-        if let direction = step.maneuverDirection {
-            switch direction {
-            case .slightRight:
-                self.arrowView.text = "↗️"
-            case .sharpRight, .right:
-                self.arrowView.text = "➡️"
-            case .slightLeft:
-                self.arrowView.text = "↖️"
-            case .sharpLeft, .left:
-                self.arrowView.text = "⬅️"
-            case .uTurn:
-                self.arrowView.text = "⤵️"
-            default:
-                self.arrowView.text = "⬆️"
-            }
-        }
-        self.instructionLabel.text = routeProgress.currentLegProgress.currentStepProgress.step.instructionsDisplayedAlongStep?.first?.primaryText
-        let distance = routeProgress.currentLegProgress.currentStepProgress.distanceRemaining
-        self.distanceLabel.text = textDistanceFormatter.string(fromMeters: distance)
     }
 
     // Fired when the user is no longer on the route.
     // A new route should be fetched at this time.
     @objc func rerouted(_ notification: NSNotification) {
-        speechSynth.stopSpeaking(at: .word)
 
         getRoute {
             /*
@@ -131,11 +94,10 @@ class CustomViewController: UIViewController, MGLMapViewDelegate, AVSpeechSynthe
              */
             let routeProgress = RouteProgress(route: self.userRoute!)
             self.routeController.routeProgress = routeProgress
-            self.updateRouteProgress(routeProgress: routeProgress)
         }
     }
 
-    func getRoute(completion: (()->())? = nil) {
+    func getRoute(completion: (()->Void)? = nil) {
         let options = RouteOptions(coordinates: [mapView.userLocation!.coordinate, destination.coordinate])
         options.includesSteps = true
         options.routeShapeResolution = .full

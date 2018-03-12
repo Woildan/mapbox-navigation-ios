@@ -2,7 +2,8 @@ import XCTest
 import CoreLocation
 @testable import MapboxCoreNavigation
 
-let oneMile: CLLocationDistance = metersPerMile
+let oneMile: CLLocationDistance = .metersPerMile
+let oneYard: CLLocationDistance = 0.9144
 let oneFeet: CLLocationDistance = 0.3048
 
 class DistanceFormatterTests: XCTestCase {
@@ -15,10 +16,11 @@ class DistanceFormatterTests: XCTestCase {
     
     func assertDistance(_ distance: CLLocationDistance, displayed: String) {
         let displayedString = distanceFormatter.string(from: distance)
-        XCTAssert(displayedString.contains(displayed), "Displayed: '\(displayedString)' should be equal to \(displayed)")
+        XCTAssertEqual(displayedString, displayed, "Displayed: '\(displayedString)' should be equal to \(displayed)")
     }
     
     func testDistanceFormatters_US() {
+        NavigationSettings.shared.distanceUnit = .mile
         distanceFormatter.numberFormatter.locale = Locale(identifier: "en-US")
         
         assertDistance(0,               displayed: "0 ft")
@@ -39,6 +41,7 @@ class DistanceFormatterTests: XCTestCase {
     }
     
     func testDistanceFormatters_DE() {
+        NavigationSettings.shared.distanceUnit = .kilometer
         distanceFormatter.numberFormatter.locale = Locale(identifier: "de-DE")
         
         assertDistance(0,       displayed: "0 m")
@@ -61,9 +64,20 @@ class DistanceFormatterTests: XCTestCase {
     }
     
     func testDistanceFormatters_GB() {
+        NavigationSettings.shared.distanceUnit = .mile
         distanceFormatter.numberFormatter.locale = Locale(identifier: "en-GB")
         
-        assertDistance(0,               displayed: "0 ft")
+        assertDistance(0,               displayed: "0 yd")
+        assertDistance(oneYard*4,       displayed: "0 yd")
+        assertDistance(oneYard*5,       displayed: "10 yd")
+        assertDistance(oneYard*12,      displayed: "10 yd")
+        assertDistance(oneYard*24,      displayed: "25 yd")
+        assertDistance(oneYard*25,      displayed: "25 yd")
+        assertDistance(oneYard*38,      displayed: "50 yd")
+        assertDistance(oneYard*126,     displayed: "150 yd")
+        assertDistance(oneYard*150,     displayed: "150 yd")
+        assertDistance(oneYard*174,     displayed: "150 yd")
+        assertDistance(oneYard*175,     displayed: "200 yd")
         assertDistance(oneMile/2,       displayed: "0.5 mi")
         assertDistance(oneMile,         displayed: "1 mi")
         assertDistance(oneMile*2.5,     displayed: "2.5 mi")
