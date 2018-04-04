@@ -53,35 +53,32 @@ class RouteControllerTests: XCTestCase {
         XCTAssertEqual(navigation.location!.coordinate, firstLocation.coordinate, "Check snapped location is working")
     }
     
-    func testSnappedLocation100MetersAlongRoute() {
-        let navigation = setup.routeController
-        let firstLocation = setup.firstLocation
+    func testUserPuckShouldFaceBackwards() {
+        // This route is a simple straight line: http://geojson.io/#id=gist:anonymous/64cfb27881afba26e3969d06bacc707c&map=17/37.77717/-122.46484
+        let response = Fixture.JSONFromFileNamed(name: "straight-line")
+        let jsonRoute = (response["routes"] as! [AnyObject]).first as! [String : Any]
+        let waypoint1 = Waypoint(coordinate: CLLocationCoordinate2D(latitude: 37.795042, longitude: -122.413165))
+        let waypoint2 = Waypoint(coordinate: CLLocationCoordinate2D(latitude: 37.7727, longitude: -122.433378))
+        let directions = Directions(accessToken: "pk.feedCafeDeadBeefBadeBede")
+        let route = Route(json: jsonRoute, waypoints: [waypoint1, waypoint2], routeOptions: NavigationRouteOptions(waypoints: [waypoint1, waypoint2]))
         
-        let initialHeadingOnFirstStep = navigation.routeProgress.currentLegProgress.currentStep.finalHeading!
-        let coordinateAlongFirstStep = firstLocation.coordinate.coordinate(at: 100, facing: initialHeadingOnFirstStep)
-        let locationAlongFirstStep = CLLocation(latitude: coordinateAlongFirstStep.latitude, longitude: coordinateAlongFirstStep.longitude)
-        navigation.locationManager(navigation.locationManager, didUpdateLocations: [locationAlongFirstStep])
-        XCTAssertTrue(locationAlongFirstStep.distance(from: navigation.location!) < 1, "The location update is less than 1 meter away from the calculated snapped location")
-    }
-    
-    func testInterpolatedCourse() {
-        let navigation = setup.routeController
-        let firstLocation = setup.firstLocation
+        route.accessToken = "foo"
+        let navigation = RouteController(along: route, directions: directions)
+        let firstCoord = navigation.routeProgress.currentLegProgress.nearbyCoordinates.first!
+        let firstLocation = CLLocation(latitude: firstCoord.latitude, longitude: firstCoord.longitude)
+        let coordNearStart = Polyline(navigation.routeProgress.currentLegProgress.nearbyCoordinates).coordinateFromStart(distance: 10)!
         
-        let calculatedCourse = navigation.interpolatedCourse(from: firstLocation, along: navigation.routeProgress.currentLegProgress.currentStepProgress.step.coordinates!)!
-        let initialHeadingOnFirstStep = navigation.routeProgress.currentLegProgress.currentStepProgress.step.finalHeading!
-        XCTAssertTrue(calculatedCourse - initialHeadingOnFirstStep < 1, "At the beginning of the route, the final heading of the departure step should be very similar to the caclulated course of the first location update.")
-    }
-    
-    func testShouldSnap() {
-        let navigation = setup.routeController
-        let firstLocation = setup.firstLocation
-        let initialHeadingOnFirstStep = navigation.routeProgress.currentLegProgress.currentStepProgress.step.finalHeading!
+        navigation.locationManager(navigation.locationManager, didUpdateLocations: [firstLocation])
         
-        XCTAssertTrue(navigation.shouldSnap(firstLocation, toRouteWith: initialHeadingOnFirstStep), "Should snap")
+        // We're now 10 meters away from the last coord, looking at the start.
+        // Basically, simulating moving backwards.
+        let directionToStart = coordNearStart.direction(to: firstCoord)
+        let facingTowardsStartLocation = CLLocation(coordinate: coordNearStart, altitude: 0, horizontalAccuracy: 0, verticalAccuracy: 0, course: directionToStart, speed: 0, timestamp: Date())
         
-        let differentCourseAndAccurateLocation = CLLocation(coordinate: firstLocation.coordinate, altitude: 0, horizontalAccuracy: 0, verticalAccuracy: 0, course: 0, speed: 10, timestamp: Date())
+        navigation.locationManager(navigation.locationManager, didUpdateLocations: [facingTowardsStartLocation])
         
-        XCTAssertFalse(navigation.shouldSnap(differentCourseAndAccurateLocation, toRouteWith: initialHeadingOnFirstStep), "Should not snap when user course is different, the location is accurate and moving")
+        // The course should not be the interpolated course, rather the raw course.
+        XCTAssertEqual(directionToStart, navigation.location!.course, "The course should be the raw course and not an interpolated course")
+        XCTAssertFalse(facingTowardsStartLocation.shouldSnap(toRouteWith: facingTowardsStartLocation.interpolatedCourse(along: navigation.routeProgress.currentLegProgress.nearbyCoordinates)!, distanceToFirstCoordinateOnLeg: facingTowardsStartLocation.distance(from: firstLocation)), "Should not snap")
     }
 }

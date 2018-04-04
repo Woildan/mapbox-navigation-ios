@@ -2,8 +2,14 @@ import UIKit
 import MapboxCoreNavigation
 import MapboxDirections
 
+@objc(MBInstructionsBannerViewDelegate)
 protocol InstructionsBannerViewDelegate: class {
-    func didTapInstructionsBanner(_ sender: BaseInstructionsBannerView)
+    
+    @objc(didTapInstructionsBanner:)
+    optional func didTapInstructionsBanner(_ sender: BaseInstructionsBannerView)
+    
+    @objc(didDragInstructionsBanner:)
+    optional func didDragInstructionsBanner(_ sender: BaseInstructionsBannerView)
 }
 
 /// :nodoc:
@@ -26,24 +32,14 @@ open class BaseInstructionsBannerView: UIControl {
     var centerYConstraints = [NSLayoutConstraint]()
     var baselineConstraints = [NSLayoutConstraint]()
     
-    fileprivate let distanceFormatter = DistanceFormatter(approximate: true)
+    let distanceFormatter = DistanceFormatter(approximate: true)
     
     var distance: CLLocationDistance? {
         didSet {
-            distanceLabel.unitRange = nil
-            distanceLabel.valueRange = nil
-            distanceLabel.distanceString = nil
+            distanceLabel.attributedDistanceString = nil
             
             if let distance = distance {
-                let distanceString = distanceFormatter.string(from: distance)
-                let distanceUnit = distanceFormatter.unitString(fromValue: distance, unit: distanceFormatter.unit)
-                guard let unitRange = distanceString.range(of: distanceUnit) else { return }
-                let distanceValue = distanceString.replacingOccurrences(of: distanceUnit, with: "")
-                guard let valueRange = distanceString.range(of: distanceValue) else { return }
-
-                distanceLabel.unitRange = unitRange
-                distanceLabel.valueRange = valueRange
-                distanceLabel.distanceString = distanceString
+                distanceLabel.attributedDistanceString = distanceFormatter.attributedString(for: distance)
             } else {
                 distanceLabel.text = nil
             }
@@ -67,8 +63,14 @@ open class BaseInstructionsBannerView: UIControl {
         setupAvailableBounds()
     }
     
-    @IBAction func tappedInstructionsBanner(_ sender: Any) {
-        delegate?.didTapInstructionsBanner(self)
+    @objc func draggedInstructionsBanner(_ sender: Any) {
+        if let gestureRecognizer = sender as? UIPanGestureRecognizer, gestureRecognizer.state == .ended {
+            delegate?.didDragInstructionsBanner?(self)
+        }
+    }
+    
+    @objc func tappedInstructionsBanner(_ sender: Any) {
+        delegate?.didTapInstructionsBanner?(self)
     }
     
     func set(_ instruction: VisualInstruction?) {
@@ -89,8 +91,7 @@ open class BaseInstructionsBannerView: UIControl {
     override open func prepareForInterfaceBuilder() {
         super.prepareForInterfaceBuilder()
         maneuverView.isStart = true
-        
-        primaryLabel.instruction = [VisualInstructionComponent(type: .destination, text: "Primary text label", imageURL: nil, maneuverType: .none, maneuverDirection: .none)]
+        primaryLabel.instruction = [VisualInstructionComponent(type: .text, text: "Primary text label", imageURL: nil, maneuverType: .none, maneuverDirection: .none, abbreviation: nil, abbreviationPriority: NSNotFound)]
         
         distance = 100
     }
