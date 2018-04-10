@@ -1,4 +1,19 @@
-## Changes to the Mapbox Navigation SDK for iOS
+# Changes to the Mapbox Navigation SDK for iOS
+
+## master
+
+### User Interface
+
+* Draws slight right and left turn icons for slight turns in the turn lane view. [#1270](https://github.com/mapbox/mapbox-navigation-ios/pull/1270)
+
+### Core Navigation
+
+* Fixed a crash that was caused by check the edit distance of an empty string. [#1281](https://github.com/mapbox/mapbox-navigation-ios/pull/1281/)
+* Removes warnings when using Swift 4.1. [#1271](https://github.com/mapbox/mapbox-navigation-ios/pull/1271)
+
+### Spoken Instruction
+
+* Fixed an issue that would preemptively fallback to the default speech synthesizer. [#1284](https://github.com/mapbox/mapbox-navigation-ios/pull/1284)
 
 ## v0.16.0 (March 26, 2018)
 
@@ -9,7 +24,8 @@
 * Fixed an issue causing the overview map to insist on centering the route upon each location update. ([#1223](https://github.com/mapbox/mapbox-navigation-ios/pull/1223))
 * Improved the contrast of `TimeRemainingLabel.trafficSevereColor` against `BottomBannerView.backgroundColor` in `NightStyle`. ([#1228](https://github.com/mapbox/mapbox-navigation-ios/pull/1228))
 * Fixed an issue where a slash appeared between two shields in the top banner. ([#1169](https://github.com/mapbox/mapbox-navigation-ios/pull/1169))
-* Fixed an issue where using `NavigationMapViewControllerDelegate.navigationMapView(_:imageFor:)` would not override the destination annotation. [#1256](https://github.com/mapbox/mapbox-navigation-ios/pull/1256)
+* Fixed an issue where using `NavigationMapViewControllerDelegate.navigationMapView(_:imageFor:)` would not override the destination annotation. ([#1256](https://github.com/mapbox/mapbox-navigation-ios/pull/1256))
+* Adds a handle at the bottom of the banner to reveals additional instructions. ([#1253](https://github.com/mapbox/mapbox-navigation-ios/pull/1253))
 
 ### Spoken instructions
 * Audio data for spoken instructions is cached in device storage to minimize data usage. ([#12296](https://github.com/mapbox/mapbox-navigation-ios/pull/1226))

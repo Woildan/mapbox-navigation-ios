@@ -3,13 +3,15 @@ import MapboxDirections
 import Turf
 @testable import MapboxCoreNavigation
 
+fileprivate let mbTestHeading: CLLocationDirection = 50
+
 class RouteControllerTests: XCTestCase {
     
     var setup: (routeController: RouteController, firstLocation: CLLocation) {
         route.accessToken = "foo"
         let navigation = RouteController(along: route, directions: directions)
         let firstCoord = navigation.routeProgress.currentLegProgress.nearbyCoordinates.first!
-        return (routeController: navigation, firstLocation: CLLocation(latitude: firstCoord.latitude, longitude: firstCoord.longitude))
+        return (routeController: navigation, firstLocation: CLLocation(coordinate: firstCoord, altitude: 5, horizontalAccuracy: 10, verticalAccuracy: 5, course: 20, speed: 4, timestamp: Date()))
     }
     
     func testUserIsOnRoute() {
@@ -53,6 +55,19 @@ class RouteControllerTests: XCTestCase {
         XCTAssertEqual(navigation.location!.coordinate, firstLocation.coordinate, "Check snapped location is working")
     }
     
+    func testSnappedLocationForUnqualifiedLocation() {
+        let navigation = setup.routeController
+        let firstLocation = setup.firstLocation
+        navigation.locationManager(navigation.locationManager, didUpdateLocations: [firstLocation])
+        XCTAssertEqual(navigation.location!.coordinate, firstLocation.coordinate, "Check snapped location is working")
+        
+        let futureCoord = Polyline(navigation.routeProgress.currentLegProgress.nearbyCoordinates).coordinateFromStart(distance: 100)!
+        let futureInaccurateLocation = CLLocation(coordinate: futureCoord, altitude: 0, horizontalAccuracy: 1, verticalAccuracy: 200, course: 0, speed: 5, timestamp: Date())
+        
+        navigation.locationManager(navigation.locationManager, didUpdateLocations: [futureInaccurateLocation])
+        XCTAssertEqual(navigation.location!.coordinate, futureInaccurateLocation.coordinate, "Inaccurate location is still snapped")
+    }
+  
     func testUserPuckShouldFaceBackwards() {
         // This route is a simple straight line: http://geojson.io/#id=gist:anonymous/64cfb27881afba26e3969d06bacc707c&map=17/37.77717/-122.46484
         let response = Fixture.JSONFromFileNamed(name: "straight-line")
@@ -80,5 +95,22 @@ class RouteControllerTests: XCTestCase {
         // The course should not be the interpolated course, rather the raw course.
         XCTAssertEqual(directionToStart, navigation.location!.course, "The course should be the raw course and not an interpolated course")
         XCTAssertFalse(facingTowardsStartLocation.shouldSnap(toRouteWith: facingTowardsStartLocation.interpolatedCourse(along: navigation.routeProgress.currentLegProgress.nearbyCoordinates)!, distanceToFirstCoordinateOnLeg: facingTowardsStartLocation.distance(from: firstLocation)), "Should not snap")
+    }
+    
+    func testLocationShouldUseHeading() {
+        let navigation = setup.routeController
+        let firstLocation = setup.firstLocation
+        navigation.locationManager(navigation.locationManager, didUpdateLocations: [firstLocation])
+        
+        XCTAssertEqual(navigation.location!.course, firstLocation.course, "Course should be using course")
+        
+        let invalidCourseLocation = CLLocation(coordinate: firstLocation.coordinate, altitude: firstLocation.altitude, horizontalAccuracy: firstLocation.horizontalAccuracy, verticalAccuracy: firstLocation.verticalAccuracy, course: -1, speed: firstLocation.speed, timestamp: firstLocation.timestamp)
+        
+        let heading = CLHeading(heading: mbTestHeading, accuracy: 1)!
+        
+        navigation.locationManager(navigation.locationManager, didUpdateLocations: [invalidCourseLocation])
+        navigation.locationManager(navigation.locationManager, didUpdateHeading: heading)
+        
+        XCTAssertEqual(navigation.location!.course, mbTestHeading, "Course should be using bearing")
     }
 }
