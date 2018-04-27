@@ -35,7 +35,7 @@ open class BaseInstructionsBannerView: UIControl {
     
     let distanceFormatter = DistanceFormatter(approximate: true)
     
-    var distance: CLLocationDistance? {
+    public var distance: CLLocationDistance? {
         didSet {
             distanceLabel.attributedDistanceString = nil
             
@@ -47,7 +47,7 @@ open class BaseInstructionsBannerView: UIControl {
         }
     }
     
-    override init(frame: CGRect) {
+    override public init(frame: CGRect) {
         super.init(frame: frame)
         commonInit()
     }
@@ -76,7 +76,7 @@ open class BaseInstructionsBannerView: UIControl {
         delegate?.didTapInstructionsBanner?(self)
     }
     
-    func set(_ instruction: VisualInstruction?) {
+    public func set(_ instruction: VisualInstruction?) {
         let secondaryInstruction = instruction?.secondaryTextComponents
         primaryLabel.numberOfLines = secondaryInstruction == nil ? 2 : 1
         
