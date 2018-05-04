@@ -1,4 +1,4 @@
-github "Mappy/MapboxDirections.swift" "v0.19.1-mappy.1"
+github "Mappy/MapboxDirections.swift" "v0.19.1-mappy.2"
 github "mapbox/mapbox-events-ios" "v0.4.0"
 github "mapbox/turf-swift" "v0.1.1"
 github "raphaelmor/Polyline" "v4.2.0"
