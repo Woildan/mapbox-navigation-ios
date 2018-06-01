@@ -231,7 +231,7 @@ open class RouteController: NSObject {
         }
     }
     
-    var userSnapToStepDistanceFromManeuver: CLLocationDistance?
+    public var userSnapToStepDistanceFromManeuver: CLLocationDistance?
 
     /**
      Intializes a new `RouteController`.
@@ -386,7 +386,7 @@ open class RouteController: NSObject {
      The most recently received user location.
      - note: This is a raw location received from `locationManager`. To obtain an idealized location, use the `location` property.
      */
-    var rawLocation: CLLocation? {
+    public var rawLocation: CLLocation? {
         didSet {
             updateDistanceToManeuver()
         }
@@ -888,7 +888,7 @@ extension RouteController: CLLocationManagerDelegate {
         }
     }
 
-    func advanceStepIndex(to: Array<RouteStep>.Index? = nil) {
+    public func advanceStepIndex(to: Array<RouteStep>.Index? = nil) {
         if let forcedStepIndex = to {
             guard forcedStepIndex < routeProgress.currentLeg.steps.count else { return }
             routeProgress.currentLegProgress.stepIndex = forcedStepIndex

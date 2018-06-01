@@ -298,9 +298,9 @@ open class RouteLegProgress: NSObject {
         return nearby
     }
     
-    typealias StepIndexDistance = (index: Int, distance: CLLocationDistance)
+    public typealias StepIndexDistance = (index: Int, distance: CLLocationDistance)
     
-    func closestStep(to coordinate: CLLocationCoordinate2D) -> StepIndexDistance? {
+    public func closestStep(to coordinate: CLLocationCoordinate2D) -> StepIndexDistance? {
         var currentClosest: StepIndexDistance?
         let remainingSteps = leg.steps.suffix(from: stepIndex)
         
