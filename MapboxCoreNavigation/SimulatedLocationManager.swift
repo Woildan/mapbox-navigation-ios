@@ -78,6 +78,9 @@ public class SimulatedLocationManager: NavigationLocationManager {
             
             currentDistance = 0
             currentSpeed = 30
+
+			shouldDeviateRoute = false
+			routeDeviationDeltaCoordinates = nil
         }
     }
     
@@ -150,8 +153,31 @@ public class SimulatedLocationManager: NavigationLocationManager {
             let reversedTurnPenalty = maximumTurnPenalty - closestLocation.turnPenalty
             currentSpeed = reversedTurnPenalty.scale(minimumIn: minimumTurnPenalty, maximumIn: maximumTurnPenalty, minimumOut: minimumSpeed, maximumOut: maximumSpeed)
         }
+
+		var coordinate = newCoordinate
+		if shouldDeviateRoute == true {
+			let delta: CLLocationDegrees = 0.0002
+			if routeDeviationDeltaCoordinates == nil {
+				let angle = newCoordinate.direction(to: lookAheadCoordinate).wrap(min: 0, max: 360)
+				if (45.0...135.0).contains(angle)
+					|| (225.0...315.0).contains(angle) {
+					routeDeviationDeltaCoordinates = CLLocationCoordinate2DMake(0, delta)
+				}
+				else {
+					routeDeviationDeltaCoordinates = CLLocationCoordinate2DMake(delta, 0)
+				}
+			}
+			else {
+				let lat: CLLocationDegrees = (routeDeviationDeltaCoordinates!.latitude > 0 ? routeDeviationDeltaCoordinates!.latitude + delta : 0)
+				let lon: CLLocationDegrees = (routeDeviationDeltaCoordinates!.longitude > 0 ? routeDeviationDeltaCoordinates!.longitude + delta : 0)
+				routeDeviationDeltaCoordinates = CLLocationCoordinate2DMake(lat, lon)
+			}
+
+			coordinate = CLLocationCoordinate2DMake(newCoordinate.latitude + routeDeviationDeltaCoordinates!.latitude,
+													newCoordinate.longitude + routeDeviationDeltaCoordinates!.longitude)
+		}
         
-        let location = CLLocation(coordinate: newCoordinate,
+        let location = CLLocation(coordinate: coordinate,
                                   altitude: 0,
                                   horizontalAccuracy: horizontalAccuracy,
                                   verticalAccuracy: verticalAccuracy,
@@ -165,6 +191,9 @@ public class SimulatedLocationManager: NavigationLocationManager {
         currentDistance += currentSpeed * speedMultiplier
         perform(#selector(tick), with: nil, afterDelay: 1)
     }
+
+	public var shouldDeviateRoute: Bool = false
+	fileprivate var routeDeviationDeltaCoordinates: CLLocationCoordinate2D?
 }
 
 extension Double {
