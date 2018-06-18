@@ -56,6 +56,9 @@ public class SimulatedLocationManager: NavigationLocationManager {
     }
     
     var routeProgress: RouteProgress?
+
+	public var shouldDeviateRoute: Bool = false
+	fileprivate var routeDeviationDeltaCoordinates: CLLocationCoordinate2D?
     
     /**
      Initalizes a new `SimulatedLocationManager` with the given route.
@@ -191,9 +194,6 @@ public class SimulatedLocationManager: NavigationLocationManager {
         currentDistance += currentSpeed * speedMultiplier
         perform(#selector(tick), with: nil, afterDelay: 1)
     }
-
-	public var shouldDeviateRoute: Bool = false
-	fileprivate var routeDeviationDeltaCoordinates: CLLocationCoordinate2D?
 }
 
 extension Double {
