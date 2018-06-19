@@ -34,7 +34,7 @@ open class Style: NSObject {
     /**
      Map style to be used for the style.
      */
-    @objc open var mapStyleURL: URL = URL(string: "mapbox://styles/mapbox/navigation-guidance-day-v2")!
+    @objc open var mapStyleURL: URL = MGLStyle.navigationGuidanceDayStyleURL
     
     /**
      Applies the style for all changed properties.
@@ -254,6 +254,21 @@ open class StylableLabel: UILabel {
     @objc dynamic open var normalFont: UIFont = .systemFont(ofSize: 16) {
         didSet {
             font = normalFont
+        }
+    }
+}
+
+/// :nodoc
+@objc(MBStylableView)
+open class StylableView: UIView {
+    @objc dynamic var borderWidth: CGFloat = 0.0 {
+        didSet {
+            layer.borderWidth = borderWidth
+        }
+    }
+    @objc dynamic var cornerRadius: CGFloat = 0.0 {
+        didSet {
+            layer.cornerRadius = cornerRadius
         }
     }
 }

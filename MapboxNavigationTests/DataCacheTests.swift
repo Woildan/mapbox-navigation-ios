@@ -5,18 +5,22 @@ import XCTest
 class DataCacheTests: XCTestCase {
 
     let cache: DataCache = DataCache()
-    let asyncTimeout: TimeInterval = 2.0
+
+    private func clearDisk() {
+        let semaphore = DispatchSemaphore(value: 0)
+        cache.clearDisk {
+            semaphore.signal()
+        }
+        let semaphoreResult = semaphore.wait(timeout: XCTestCase.NavigationTests.timeout)
+        XCTAssert(semaphoreResult == .success, "Semaphore timed out")
+    }
 
     override func setUp() {
         super.setUp()
         self.continueAfterFailure = false
 
         cache.clearMemory()
-        let expectation = self.expectation(description: "Clearing Disk Cache")
-        cache.clearDisk {
-            expectation.fulfill()
-        }
-        self.wait(for: [expectation], timeout: asyncTimeout)
+        clearDisk()
     }
 
     let dataKey = "dataKey"
@@ -34,19 +38,21 @@ class DataCacheTests: XCTestCase {
     }
 
     private func storeDataInMemory() {
-        let expectation = self.expectation(description: "Storing data in memory cache")
+        let semaphore = DispatchSemaphore(value: 0)
         cache.store(exampleData!, forKey: dataKey, toDisk: false) {
-            expectation.fulfill()
+            semaphore.signal()
         }
-        self.wait(for: [expectation], timeout: asyncTimeout)
+        let semaphoreResult = semaphore.wait(timeout: XCTestCase.NavigationTests.timeout)
+        XCTAssert(semaphoreResult == .success, "Semaphore timed out")
     }
 
     private func storeDataOnDisk() {
-        let expectation = self.expectation(description: "Storing data in disk cache")
+        let semaphore = DispatchSemaphore(value: 0)
         cache.store(exampleData!, forKey: dataKey, toDisk: true) {
-            expectation.fulfill()
+            semaphore.signal()
         }
-        self.wait(for: [expectation], timeout: asyncTimeout)
+        let semaphoreResult = semaphore.wait(timeout: XCTestCase.NavigationTests.timeout)
+        XCTAssert(semaphoreResult == .success, "Semaphore timed out")
     }
 
     // MARK: Tests
@@ -80,12 +86,7 @@ class DataCacheTests: XCTestCase {
         storeDataOnDisk()
 
         cache.clearMemory()
-
-        let expectation = self.expectation(description: "Clearing Disk Cache")
-        cache.clearDisk {
-            expectation.fulfill()
-        }
-        self.wait(for: [expectation], timeout: asyncTimeout)
+        clearDisk()
 
         XCTAssertNil(cache.data(forKey: dataKey))
     }
@@ -104,5 +105,28 @@ class DataCacheTests: XCTestCase {
         tempCache = nil
 
         NotificationCenter.default.post(name: .UIApplicationDidReceiveMemoryWarning, object: nil)
+    }
+    
+    func testCacheKeyForKey() {
+        let threeMileInstruction = "<speak><amazon:effect name=\"drc\"><prosody rate=\"1.08\">Continue on <say-as interpret-as=\"address\">I-80</say-as> East for 3 miles</prosody></amazon:effect></speak>"
+        let sixMileInstruction = "<speak><amazon:effect name=\"drc\"><prosody rate=\"1.08\">Continue on <say-as interpret-as=\"address\">I-80</say-as> East for 6 miles</prosody></amazon:effect></speak>"
+        XCTAssertNotEqual(cache.fileCache.cacheKeyForKey(threeMileInstruction), cache.fileCache.cacheKeyForKey(sixMileInstruction))
+        XCTAssertNotEqual(cache.fileCache.cacheKeyForKey(""), cache.fileCache.cacheKeyForKey("  "))
+        XCTAssertNotEqual(cache.fileCache.cacheKeyForKey("i"), cache.fileCache.cacheKeyForKey("I"))
+        XCTAssertNotEqual(cache.fileCache.cacheKeyForKey("{"), cache.fileCache.cacheKeyForKey("}"))
+        XCTAssertEqual(cache.fileCache.cacheKeyForKey("hello"), cache.fileCache.cacheKeyForKey("hello"))
+        XCTAssertEqual(cache.fileCache.cacheKeyForKey("https://cool.com/neat"), cache.fileCache.cacheKeyForKey("https://cool.com/neat"))
+        XCTAssertEqual(cache.fileCache.cacheKeyForKey("-"), cache.fileCache.cacheKeyForKey("-"))
+    }
+    
+    func testCacheKeyPerformance() {
+        let instructionTurn = "Turn left"
+        let instructionContinue = "<speak><amazon:effect name=\"drc\"><prosody rate=\"1.08\">Continue on <say-as interpret-as=\"address\">I-80</say-as> East for 3 miles</prosody></amazon:effect></speak>"
+        measure {
+            for _ in 0...1000 {
+                _ = cache.fileCache.cacheKeyForKey(instructionTurn)
+                _ = cache.fileCache.cacheKeyForKey(instructionContinue)
+            }
+        }
     }
 }

@@ -10,43 +10,46 @@ class ImageDownloaderTests: XCTestCase {
         return config
     }()
 
-    lazy var downloader: ReentrantImageDownloader = {
-        return ImageDownloader(sessionConfiguration: sessionConfig)
-    }()
+    var downloader: ReentrantImageDownloader?
 
     let imageURL = URL(string: "https://zombo.com/lulz/selfie.png")!
-    let asyncTimeout: TimeInterval = 2.0
 
     override func setUp() {
         super.setUp()
         self.continueAfterFailure = false
 
-        URLProtocol.registerClass(ImageLoadingURLProtocolSpy.self)
         ImageLoadingURLProtocolSpy.reset()
 
-        let originalImageData = UIImagePNGRepresentation(ShieldImage.i280.image)!
-        ImageLoadingURLProtocolSpy.registerData(originalImageData, forURL: imageURL)
+        let imageData = UIImagePNGRepresentation(ShieldImage.i280.image)!
+        ImageLoadingURLProtocolSpy.registerData(imageData, forURL: imageURL)
+
+        downloader = ImageDownloader(sessionConfiguration: sessionConfig)
     }
 
     override func tearDown() {
-        URLProtocol.unregisterClass(ImageLoadingURLProtocolSpy.self)
+        downloader = nil
 
         super.tearDown()
     }
 
     func testDownloadingAnImage() {
+        guard let downloader = downloader else {
+            XCTFail()
+            return
+        }
         var imageReturned: UIImage?
         var dataReturned: Data?
         var errorReturned: Error?
+        let semaphore = DispatchSemaphore(value: 0)
 
-        let async = self.expectation(description: "Image Download")
         downloader.downloadImage(with: imageURL) { (image, data, error) in
             imageReturned = image
             dataReturned = data
             errorReturned = error
-            async.fulfill()
+            semaphore.signal()
         }
-        wait(for: [async], timeout: asyncTimeout)
+        let semaphoreResult = semaphore.wait(timeout: XCTestCase.NavigationTests.timeout)
+        XCTAssert(semaphoreResult == .success, "Semaphore timed out")
 
         // The ImageDownloader is meant to be used with an external caching mechanism
         let request = ImageLoadingURLProtocolSpy.pastRequestForURL(imageURL)!
@@ -58,46 +61,96 @@ class ImageDownloaderTests: XCTestCase {
         XCTAssertNil(errorReturned)
     }
 
-    func testDownloadingSameImageWhileInProgressAddsCallbacksWithoutAddingAnotherRequest() {
-        let firstDownload = self.expectation(description: "First Image Download")
-        let secondDownload = self.expectation(description: "Second Image Download")
+    func testDownloadingImageWhileAlreadyInProgressAddsCallbacksWithoutAddingAnotherRequest() {
+        guard let downloader = downloader else {
+            XCTFail()
+            return
+        }
         var firstCallbackCalled = false
         var secondCallbackCalled = false
+        var operation: ImageDownload
+
+        // URL loading is delayed in order to simulate conditions under which multiple requests for the same asset would be made
+        ImageLoadingURLProtocolSpy.delayImageLoading()
+
         downloader.downloadImage(with: imageURL) { (image, data, error) in
             firstCallbackCalled = true
-            firstDownload.fulfill()
         }
+        operation = downloader.activeOperation(with: imageURL)!
+
         downloader.downloadImage(with: imageURL) { (image, data, error) in
             secondCallbackCalled = true
-            secondDownload.fulfill()
         }
-        wait(for: [firstDownload, secondDownload], timeout: asyncTimeout)
 
-        //These flags might seem redundant, but it's good to be explicit sometimes
+        ImageLoadingURLProtocolSpy.resumeImageLoading()
+
+        XCTAssertTrue(operation === downloader.activeOperation(with: imageURL)!,
+                      "Expected \(String(describing: operation)) to be identical to \(String(describing: downloader.activeOperation(with: imageURL)))")
+
+        var spinCount = 0
+
+        runUntil({
+            spinCount += 1
+            return operation.isFinished
+        })
+
+        print("Succeeded after evaluating condition \(spinCount) times.")
+
         XCTAssertTrue(firstCallbackCalled)
         XCTAssertTrue(secondCallbackCalled)
     }
 
     func testDownloadingImageAgainAfterFirstDownloadCompletes() {
-        let firstDownload = self.expectation(description: "First Image Download")
-        var firstCallbackCalled = false
-        downloader.downloadImage(with: imageURL) { (image, data, error) in
-            firstCallbackCalled = true
-            firstDownload.fulfill()
+        guard let downloader = downloader else {
+            XCTFail()
+            return
         }
-        wait(for: [firstDownload], timeout: asyncTimeout)
+        var callbackCalled = false
+        var spinCount = 0
 
-        let secondDownload = self.expectation(description: "Second Image Download")
-        var secondCallbackCalled = false
         downloader.downloadImage(with: imageURL) { (image, data, error) in
-            secondCallbackCalled = true
-            secondDownload.fulfill()
+            callbackCalled = true
         }
-        wait(for: [secondDownload], timeout: asyncTimeout)
+        var operation = downloader.activeOperation(with: imageURL)!
 
-        //These flags might seem redundant, but it's good to be explicit sometimes
-        XCTAssertTrue(firstCallbackCalled)
-        XCTAssertTrue(secondCallbackCalled)
+        runUntil({
+            spinCount += 1
+            return operation.isFinished
+        })
+
+        print("Succeeded after evaluating first condition \(spinCount) times.")
+        XCTAssertTrue(callbackCalled)
+
+        callbackCalled = false
+        spinCount = 0
+
+        downloader.downloadImage(with: imageURL) { (image, data, error) in
+            callbackCalled = true
+        }
+        operation = downloader.activeOperation(with: imageURL)!
+
+        runUntil({
+            spinCount += 1
+            return operation.isFinished
+        })
+
+        print("Succeeded after evaluating second condition \(spinCount) times.")
+        XCTAssertTrue(callbackCalled)
     }
 
+    private func runUntil(_ condition: () -> Bool, testCase: String = #function) {
+        runUntil(condition: condition, testCase: testCase, pollingInterval: NavigationTests.pollingInterval, until: NavigationTests.timeout)
+    }
+
+    private func runUntil(condition: () -> Bool, testCase: String, pollingInterval: TimeInterval, until timeout: DispatchTime) {
+        guard (timeout >= DispatchTime.now()) else {
+            XCTFail("Timeout occurred in \(testCase)")
+            return
+        }
+        
+        if condition() == false {
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: pollingInterval))
+            runUntil(condition: condition, testCase: testCase, pollingInterval: pollingInterval, until: timeout)
+        }
+    }
 }

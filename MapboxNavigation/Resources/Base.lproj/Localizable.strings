@@ -1,3 +1,6 @@
+/* Format string for indicating the device volume is low; 1 = device model */
+"DEVICE_VOLUME_LOW" = "%@ Volume Low";
+
 /* Dismiss button title on the steps view */
 "DISMISS_STEPS_TITLE" = "Close";
 
@@ -63,9 +66,6 @@
 
 /* Format for accessibility value of label indicating the existing rating; 1 = number of stars */
 "RATING_STARS_FORMAT" = "%ld star(s) set.";
-
-/* Title on button that appears when a reroute occurs */
-"REROUTE_REPORT_TITLE" = "Report Problem";
 
 /* Indicates that rerouting is in progress */
 "REROUTING" = "Rerouting…";

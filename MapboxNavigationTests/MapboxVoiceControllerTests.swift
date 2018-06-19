@@ -41,8 +41,20 @@ class MapboxVoiceControllerTests: XCTestCase {
 
         XCTAssertTrue(controller!.hasCachedSpokenInstructionForKey(cacheKey))
     }
-
-    func testControllerPrefersCachedData() {
+    
+    func testVoiceDeinit() {
+        var voiceController: MockMapboxVoiceController? = MockMapboxVoiceController()
+        let deinitExpectation = expectation(description: "Voice Controller should deinitialize")
+        voiceController!.deinitExpectation = deinitExpectation
+        voiceController = nil
+        wait(for: [deinitExpectation], timeout: 3)
     }
+}
 
+class MockMapboxVoiceController: MapboxVoiceController {
+    var deinitExpectation: XCTestExpectation?
+    
+    deinit {
+        deinitExpectation?.fulfill()
+    }
 }

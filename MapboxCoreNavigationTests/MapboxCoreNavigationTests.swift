@@ -87,7 +87,7 @@ class MapboxCoreNavigationTests: XCTestCase {
         
         let secondLocation = CLLocation(coordinate: CLLocationCoordinate2D(latitude: 38, longitude: -124),
                                         altitude: 0, horizontalAccuracy: 0, verticalAccuracy: 0, course: 0, speed: 0,
-                                        timestamp: Date(timeIntervalSinceNow: 5))
+                                        timestamp: Date(timeIntervalSinceNow: 1))
         
         let locationManager = ReplayLocationManager(locations: [firstLocation, secondLocation])
         let navigation = RouteController(along: route, directions: directions, locationManager: locationManager)
@@ -123,6 +123,27 @@ class MapboxCoreNavigationTests: XCTestCase {
         
         let timeout = locations.last!.timestamp.timeIntervalSince(locations.first!.timestamp) / locationManager.speedMultiplier
         waitForExpectations(timeout: timeout + 2) { (error) in
+            XCTAssertNil(error)
+        }
+    }
+    
+    func testFailToReroute() {
+        route.accessToken = "foo"
+        let directionsClientSpy = DirectionsSpy(accessToken: "garbage", host: nil)
+        let navigation = RouteController(along: route, directions: directionsClientSpy)
+        
+        expectation(forNotification: .routeControllerWillReroute, object: navigation) { (notification) -> Bool in
+            return true
+        }
+        
+        expectation(forNotification: .routeControllerDidFailToReroute, object: navigation) { (notification) -> Bool in
+            return true
+        }
+        
+        navigation.reroute(from: CLLocation(latitude: 0, longitude: 0))
+        directionsClientSpy.fireLastCalculateCompletion(with: nil, routes: nil, error: NSError())
+        
+        waitForExpectations(timeout: 2) { (error) in
             XCTAssertNil(error)
         }
     }

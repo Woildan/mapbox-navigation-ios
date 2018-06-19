@@ -17,13 +17,14 @@ class LaneTests: FBSnapshotTestCase {
     
     override func setUp() {
         super.setUp()
-        let routeController = RouteController(along: route, directions: directions)
-        steps = routeController.routeProgress.currentLeg.steps
-        routeProgress = routeController.routeProgress
-        
-        route.accessToken = bogusToken
         recordMode = false
         isDeviceAgnostic = true
+
+        route.accessToken = bogusToken
+        let routeController = RouteController(along: route, directions: directions)
+
+        steps = routeController.routeProgress.currentLeg.steps
+        routeProgress = routeController.routeProgress
     }
     
     func assertLanes(step: RouteStep) {
@@ -50,6 +51,6 @@ class LaneTests: FBSnapshotTestCase {
         view.lane = Lane(indications: [.slightRight])
         view.maneuverDirection = .slightRight
         view.isValid = true
-        FBSnapshotVerifyView(view)
+        FBSnapshotVerifyView(view, suffixes: ["_64"])
     }
 }

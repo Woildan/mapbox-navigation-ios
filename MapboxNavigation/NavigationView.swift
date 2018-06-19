@@ -43,7 +43,6 @@ open class NavigationView: UIView {
         static let feedbackTopConstraintPadding: CGFloat = 10.0
         static let buttonSize: CGSize = 50.0
         static let buttonSpacing: CGFloat = 8.0
-        static let rerouteReportTitle = NSLocalizedString("REROUTE_REPORT_TITLE", bundle: .mapboxNavigation, value: "Report Problem", comment: "Title on button that appears when a reroute occurs")
     }
     
     lazy var bannerShowConstraints: [NSLayoutConstraint] = [
@@ -60,8 +59,6 @@ open class NavigationView: UIView {
     lazy var endOfRouteHideConstraint: NSLayoutConstraint? = self.endOfRouteView?.topAnchor.constraint(equalTo: self.bottomAnchor)
     
     lazy var endOfRouteHeightConstraint: NSLayoutConstraint? = self.endOfRouteView?.heightAnchor.constraint(equalToConstant: Constants.endOfRouteHeight)
-    
-    lazy var rerouteFeedbackTopConstraint: NSLayoutConstraint = self.rerouteReportButton.topAnchor.constraint(equalTo: self.informationStackView.bottomAnchor, constant: Constants.feedbackTopConstraintPadding)
     
     private enum Images {
         static let overview = UIImage(named: "overview", in: .mapboxNavigation, compatibleWith: nil)!.withRenderingMode(.alwaysTemplate)
@@ -104,7 +101,6 @@ open class NavigationView: UIView {
     lazy var muteButton = FloatingButton.rounded(image: Images.volumeUp, selectedImage: Images.volumeOff)
     lazy var reportButton = FloatingButton.rounded(image: Images.feedback)
     
-    lazy var separatorView: SeparatorView = .forAutoLayout()
     lazy var lanesView: LanesView = .forAutoLayout(hidden: true)
     lazy var nextBannerView: NextBannerView = .forAutoLayout(hidden: true)
     lazy var statusView: StatusView = {
@@ -121,13 +117,6 @@ open class NavigationView: UIView {
         view.clipsToBounds = true
         view.layer.borderWidth = 1.0 / UIScreen.main.scale
         return view
-    }()
-    
-    lazy var rerouteReportButton: ReportButton = {
-        let button: ReportButton = .forAutoLayout()
-        button.setTitle(Constants.rerouteReportTitle, for: .normal)
-        button.isHidden = true
-        return button
     }()
     
     lazy var bottomBannerContentView: BottomBannerContentView = .forAutoLayout()
@@ -211,10 +200,8 @@ open class NavigationView: UIView {
             mapView,
             informationStackView,
             floatingStackView,
-            separatorView,
             resumeButton,
             wayNameView,
-            rerouteReportButton,
             bottomBannerContentView,
             instructionsBannerContentView
         ]
