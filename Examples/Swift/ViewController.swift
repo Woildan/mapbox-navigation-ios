@@ -209,7 +209,13 @@ class ViewController: UIViewController, MGLMapViewDelegate, CLLocationManagerDel
         let userWaypoint = Waypoint(location: mapView.userLocation!.location!, heading: mapView.userLocation?.heading, name: departureName)
         waypoints.insert(userWaypoint, at: 0)
 
-        let options = NavigationRouteOptions(waypoints: waypoints)
+//        let options = NavigationRouteOptions(waypoints: waypoints)
+		let options = MappyNavigationRouteOptions(waypoints: waypoints, provider: "car", qid: "1ad02a47-0e87-48f4-d190-a794fbbb6aac")
+		options.destinationAddress = "Maine - Vaugirard"
+		options.shapeFormat = .geoJSON
+		options.routeCalculation = .fastest
+		options.vehicle = "comcar"
+		options.walkSpeed = .normal
 
         requestRoute(with: options, success: defaultSuccess, failure: defaultFailure)
     }
@@ -222,7 +228,8 @@ class ViewController: UIViewController, MGLMapViewDelegate, CLLocationManagerDel
             return success(routes)
         }
 
-        _ = Directions.shared.calculate(options, completionHandler: handler)
+//        _ = Directions.shared.calculate(options, completionHandler: handler)
+		_ = Directions(accessToken: "dummy", host: "routemm.mappyrecette.net").calculate(options, completionHandler: handler)
     }
 
     // MARK: Basic Navigation
