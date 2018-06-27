@@ -211,9 +211,8 @@ class ViewController: UIViewController, MGLMapViewDelegate, CLLocationManagerDel
 
 //        let options = NavigationRouteOptions(waypoints: waypoints)
 		let options = MappyNavigationRouteOptions(waypoints: waypoints, provider: "car", qid: "1ad02a47-0e87-48f4-d190-a794fbbb6aac")
-		options.destinationAddress = "Maine - Vaugirard"
 		options.shapeFormat = .geoJSON
-		options.routeCalculation = .fastest
+		options.routeCalculationType = "fastest"
 		options.vehicle = "comcar"
 		options.walkSpeed = .normal
 
