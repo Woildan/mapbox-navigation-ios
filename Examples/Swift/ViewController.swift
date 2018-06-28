@@ -213,8 +213,10 @@ class ViewController: UIViewController, MGLMapViewDelegate, CLLocationManagerDel
 		let options = MappyNavigationRouteOptions(waypoints: waypoints, provider: "car", qid: "1ad02a47-0e87-48f4-d190-a794fbbb6aac")
 		options.shapeFormat = .geoJSON
 		options.routeCalculationType = "fastest"
+		options.userBearing = 78.001
 		options.vehicle = "comcar"
 		options.walkSpeed = .normal
+		options.bikeSpeed = .fast
 
         requestRoute(with: options, success: defaultSuccess, failure: defaultFailure)
     }
@@ -228,7 +230,7 @@ class ViewController: UIViewController, MGLMapViewDelegate, CLLocationManagerDel
         }
 
 //        _ = Directions.shared.calculate(options, completionHandler: handler)
-		_ = Directions(accessToken: "dummy", host: "routemm.mappyrecette.net").calculate(options, completionHandler: handler)
+		_ = Directions(accessToken: "dummy_token", host: "routemm.mappyrecette.net").calculate(options, completionHandler: handler)
     }
 
     // MARK: Basic Navigation
@@ -240,6 +242,7 @@ class ViewController: UIViewController, MGLMapViewDelegate, CLLocationManagerDel
 
         let navigationViewController = NavigationViewController(for: route, locationManager: navigationLocationManager())
         navigationViewController.delegate = self
+		navigationViewController.routeController.reroutesProactively = true
 
         presentAndRemoveMapview(navigationViewController)
     }
@@ -251,6 +254,7 @@ class ViewController: UIViewController, MGLMapViewDelegate, CLLocationManagerDel
         
         let navigationViewController = NavigationViewController(for: route, styles: styles, locationManager: navigationLocationManager())
         navigationViewController.delegate = self
+		navigationViewController.routeController.reroutesProactively = true
         
         presentAndRemoveMapview(navigationViewController)
     }
