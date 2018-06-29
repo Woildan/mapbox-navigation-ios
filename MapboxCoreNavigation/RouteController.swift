@@ -26,6 +26,11 @@ extension Notification.Name {
      */
     public static let routeControllerWillReroute = MBRouteControllerWillReroute
 
+	/**
+	Posted when `RouteController` is about to use a new route.
+	*/
+	public static let routeControllerWillRerouteAlong = MBRouteControllerWillRerouteAlong
+
     /**
      Posted when `RouteController` obtains a new route in response to the user diverging from a previous route.
 
@@ -87,6 +92,17 @@ public protocol RouteControllerDelegate: class {
      */
     @objc(routeController:shouldDiscardLocation:)
     optional func routeController(_ routeController: RouteController, shouldDiscard location: CLLocation) -> Bool
+
+	/**
+	Called before the route controller starts using a new route.
+
+	This method is called before `routeController(_:didRerouteAlong:)` and simultaneously with the `RouteControllerWillRerouteAlong` notification being posted.
+
+	- parameter routeController: The route controller that has received a new route.
+	- parameter route: The new route that will be used.
+	*/
+	@objc(routeController:willRerouteAlongRoute:)
+	optional func routeController(_ routeController: RouteController, willRerouteAlong route: Route)
 
     /**
      Called immediately after the route controller receives a new route.
@@ -642,6 +658,7 @@ extension RouteController: CLLocationManagerDelegate {
 
         // Check for faster route given users current location
         guard reroutesProactively else { return }
+		 // TODO: the 2 followings guard statements prevent route from being updated, should we remove/move them?
         // Only check for faster alternatives if the user has plenty of time left on the route.
         guard routeProgress.durationRemaining > 600 else { return }
         // If the user is approaching a maneuver, don't check for a faster alternatives
@@ -753,10 +770,31 @@ extension RouteController: CLLocationManagerDelegate {
         }
         let durationRemaining = routeProgress.durationRemaining
 
-        getDirections(from: location) { [weak self] (route, error) in
+        getDirections(from: location) { [weak self] (route, mappyRoutes, error) in
             guard let strongSelf = self else {
                 return
             }
+
+			if let routes = mappyRoutes
+			{
+				if let upToDateRoute = routes.first(where: { $0.routeType == .current })
+				{
+					strongSelf.delegate?.routeController?(strongSelf, willRerouteAlong: upToDateRoute)
+					NotificationCenter.default.post(name: .routeControllerWillRerouteAlong, object: self, userInfo: [
+						RouteControllerNotificationUserInfoKey.routeKey: upToDateRoute
+						])
+
+					strongSelf.didFindFasterRoute = true
+					strongSelf.routeProgress = RouteProgress(route: upToDateRoute, legIndex: 0, spokenInstructionIndex: 0)
+					strongSelf.delegate?.routeController?(strongSelf, didRerouteAlong: upToDateRoute)
+					strongSelf.didReroute(notification: NSNotification(name: .routeControllerDidReroute, object: nil, userInfo: [
+						RouteControllerNotificationUserInfoKey.isProactiveKey: true]))
+					strongSelf.didFindFasterRoute = false
+				}
+
+				strongSelf.lastLocationDate = nil
+				return
+			}
 
             guard let route = route else {
                 return
@@ -803,7 +841,7 @@ extension RouteController: CLLocationManagerDelegate {
 
         self.lastRerouteLocation = location
 
-        getDirections(from: location) { [weak self] (route, error) in
+        getDirections(from: location) { [weak self] (route, mappyRoutes, error) in
             guard let strongSelf = self else {
                 return
             }
@@ -816,7 +854,7 @@ extension RouteController: CLLocationManagerDelegate {
                 return
             }
 
-            guard let route = route else { return }
+            guard let route = route ?? mappyRoutes?.first else { return }
 
             strongSelf.routeProgress = RouteProgress(route: route, legIndex: 0)
             strongSelf.routeProgress.currentLegProgress.stepIndex = 0
@@ -851,7 +889,7 @@ extension RouteController: CLLocationManagerDelegate {
         }
     }
 
-    func getDirections(from location: CLLocation, completion: @escaping (_ route: Route?, _ error: Error?)->Void) {
+	func getDirections(from location: CLLocation, completion: @escaping (_ route: Route?, _ mappyRoutes: [MappyRoute]?, _ error: Error?)->Void) {
         routeTask?.cancel()
 
         let options = routeProgress.route.routeOptions
@@ -860,6 +898,7 @@ extension RouteController: CLLocationManagerDelegate {
             firstWaypoint.heading = location.course
             firstWaypoint.headingAccuracy = 90
         }
+		// TODO: remove routeSignature if rerouting
 
         self.lastRerouteLocation = location
 
@@ -874,19 +913,25 @@ extension RouteController: CLLocationManagerDelegate {
                 self?.isRerouting = false
             }
             if let error = error {
-                return completion(nil, error)
+                return completion(nil, nil, error)
             }
 
             guard let routes = routes else {
-                return completion(nil, nil)
+                return completion(nil, nil, nil)
             }
 
+			if routes.count > 0,
+				let mappyRoutes = routes as? [MappyRoute]
+			{
+				return completion(nil, mappyRoutes, error)
+			}
+
             if let route = self?.mostSimilarRoute(in: routes) {
-                return completion(route, error)
+                return completion(route, nil, error)
             } else if let route = routes.first {
-                return completion(route, error)
+                return completion(route, nil, error)
             } else {
-                return completion(nil, nil)
+                return completion(nil, nil, nil)
             }
         }
     }
