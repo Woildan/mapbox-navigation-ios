@@ -126,6 +126,15 @@ public protocol RouteControllerDelegate: class {
     @objc(routeController:didFailToRerouteWithError:)
     optional func routeController(_ routeController: RouteController, didFailToRerouteWith error: Error)
 
+	/**
+	Called when a faster alternative route is found.
+
+	- parameter routeController: The route controller that has received a faster alternative route.
+	- parameter route: The alternative route.
+	*/
+	@objc(routeController:didReceiveFasterRoute:)
+	optional func routeController(_ routeController: RouteController, didReceiveFasterRoute route: Route)
+
     /**
      Called when the route controller’s location manager receives a location update.
 
@@ -404,6 +413,16 @@ open class RouteController: NSObject {
         locationManager.stopUpdatingHeading()
         locationManager.delegate = nil
     }
+
+	/**
+	Replaces the currently followed route.
+	*/
+	@objc public func updateRoute(_ route: Route) {
+		self.routeProgress = RouteProgress(route: route, legIndex: 0)
+		self.delegate?.routeController?(self, didRerouteAlong: route)
+		self.didReroute(notification: NSNotification(name: .routeControllerDidReroute, object: nil, userInfo: [
+			RouteControllerNotificationUserInfoKey.routeKey: route]))
+	}
 
     /**
      The idealized user location. Snapped to the route line, if applicable, otherwise raw.
@@ -793,6 +812,12 @@ extension RouteController: CLLocationManagerDelegate {
 				}
 
 				strongSelf.lastLocationDate = nil
+
+				if let fasterRoute = routes.first(where: { $0.routeType == .best })
+				{
+					strongSelf.delegate?.routeController?(strongSelf, didReceiveFasterRoute: fasterRoute)
+				}
+
 				return
 			}
 
