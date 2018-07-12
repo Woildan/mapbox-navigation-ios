@@ -40,7 +40,7 @@ open class BottomBannerView: UIView {
                 timeRemainingLabel.textColor = timeRemainingLabel.trafficModerateColor
             case .heavy:
                 timeRemainingLabel.textColor = timeRemainingLabel.trafficHeavyColor
-            case .severe:
+            case .severe, .extreme:
                 timeRemainingLabel.textColor = timeRemainingLabel.trafficSevereColor
             }
         }
