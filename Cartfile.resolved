@@ -1,4 +1,4 @@
-github "Mappy/MapboxDirections.swift" "v0.21.0-mappy.9"
+github "Mappy/MapboxDirections.swift" "v0.21.0-mappy.10"
 github "Quick/Nimble" "v7.1.3"
 github "Quick/Quick" "v1.3.1"
 github "mapbox/mapbox-events-ios" "v0.4.2"
