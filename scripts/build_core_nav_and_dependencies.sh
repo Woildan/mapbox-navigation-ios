@@ -24,6 +24,7 @@ echo "Copying \"MapboxCoreNavigation\" dependencies to \"${frameworks_dir_path}\
 for i in "${nav_core_dependencies[@]}"
 do
 	cp -r "Carthage/Build/iOS/$i.framework" ${frameworks_dir_path}
+	cp -r "Carthage/Build/iOS/$i.framework.dSYM" ${frameworks_dir_path}
 done
 
 echo "Creating \"MapboxCoreNavigation\" framework archive\n"

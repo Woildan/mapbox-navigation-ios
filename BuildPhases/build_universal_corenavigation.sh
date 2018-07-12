@@ -24,6 +24,7 @@ echo "Creating ${DESTINATION_DIR}"
 
 mkdir -p ${DESTINATION_DIR}
 
-echo "Copying ${TARGET_NAME}.framework to ${DESTINATION_DIR}"
+echo "Copying ${TARGET_NAME}.framework and dSYM to ${DESTINATION_DIR}"
 
 cp -R "${UNIVERSAL_OUTPUTFOLDER}/iOS/${TARGET_NAME}.framework" "${DESTINATION_DIR}"
+cp -R "${BUILD_DIR}/${CONFIGURATION}-iphoneos/${TARGET_NAME}.framework.dSYM" "${DESTINATION_DIR}"
