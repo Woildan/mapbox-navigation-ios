@@ -428,7 +428,12 @@ open class RouteController: NSObject {
 	Replaces the currently followed route.
 	*/
 	@objc public func updateRoute(_ route: Route) {
+		self.delegate?.routeController?(self, willRerouteAlong: route)
+		NotificationCenter.default.post(name: .routeControllerWillRerouteAlong, object: self, userInfo: [
+			RouteControllerNotificationUserInfoKey.routeKey: route ])
+
 		self.routeProgress = RouteProgress(route: route, legIndex: 0)
+
 		self.delegate?.routeController?(self, didRerouteAlong: route)
 		self.didReroute(notification: NSNotification(name: .routeControllerDidReroute, object: nil, userInfo: [
 			RouteControllerNotificationUserInfoKey.routeKey: route]))
@@ -800,8 +805,7 @@ extension RouteController: CLLocationManagerDelegate {
 				{
 					strongSelf.delegate?.routeController?(strongSelf, willRerouteAlong: upToDateRoute)
 					NotificationCenter.default.post(name: .routeControllerWillRerouteAlong, object: self, userInfo: [
-						RouteControllerNotificationUserInfoKey.routeKey: upToDateRoute
-						])
+						RouteControllerNotificationUserInfoKey.routeKey: upToDateRoute ])
 
 					strongSelf.didFindFasterRoute = true
 					strongSelf.routeProgress = RouteProgress(route: upToDateRoute, legIndex: 0, spokenInstructionIndex: 0)
