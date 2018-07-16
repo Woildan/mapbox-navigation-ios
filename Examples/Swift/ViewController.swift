@@ -229,7 +229,7 @@ class ViewController: UIViewController, MGLMapViewDelegate, CLLocationManagerDel
         }
 
 //        _ = Directions.shared.calculate(options, completionHandler: handler)
-		_ = Directions(accessToken: "dummy_token", host: "routemm.mappyrecette.net").calculate(options, completionHandler: handler)
+		_ = Directions(accessToken: "", host: "routemm.mappyrecette.net").calculate(options, completionHandler: handler)
     }
 
     // MARK: Basic Navigation
