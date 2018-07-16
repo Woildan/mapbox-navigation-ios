@@ -803,12 +803,21 @@ extension RouteController: CLLocationManagerDelegate {
 			{
 				if let upToDateRoute = routes.first(where: { $0.routeType == .current })
 				{
+					guard let firstLeg = upToDateRoute.legs.first, let firstStep = firstLeg.steps.first else {
+						return
+					}
+					guard firstStep.expectedTravelTime >= RouteControllerMediumAlertInterval &&
+						currentUpcomingManeuver == firstLeg.steps[1] else {
+						return
+					}
+
 					strongSelf.delegate?.routeController?(strongSelf, willRerouteAlong: upToDateRoute)
 					NotificationCenter.default.post(name: .routeControllerWillRerouteAlong, object: self, userInfo: [
 						RouteControllerNotificationUserInfoKey.routeKey: upToDateRoute ])
 
 					strongSelf.didFindFasterRoute = true
 					strongSelf.routeProgress = RouteProgress(route: upToDateRoute, legIndex: 0, spokenInstructionIndex: 0)
+
 					strongSelf.delegate?.routeController?(strongSelf, didRerouteAlong: upToDateRoute)
 					strongSelf.didReroute(notification: NSNotification(name: .routeControllerDidReroute, object: nil, userInfo: [
 						RouteControllerNotificationUserInfoKey.isProactiveKey: true]))
