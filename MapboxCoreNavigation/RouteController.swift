@@ -812,7 +812,7 @@ extension RouteController: CLLocationManagerDelegate {
 					}
 
 					strongSelf.delegate?.routeController?(strongSelf, willRerouteAlong: upToDateRoute)
-					NotificationCenter.default.post(name: .routeControllerWillRerouteAlong, object: self, userInfo: [
+					NotificationCenter.default.post(name: .routeControllerWillRerouteAlong, object: strongSelf, userInfo: [
 						RouteControllerNotificationUserInfoKey.routeKey: upToDateRoute ])
 
 					strongSelf.didFindFasterRoute = true
