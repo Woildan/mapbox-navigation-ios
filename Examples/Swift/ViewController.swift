@@ -55,6 +55,8 @@ class ViewController: UIViewController, MGLMapViewDelegate, CLLocationManagerDel
         }
     }
 
+	var directions: Directions!
+
     // MARK: Directions Request Handlers
 
     fileprivate lazy var defaultSuccess: RouteRequestSuccess = { [weak self] (routes) in
@@ -211,7 +213,7 @@ class ViewController: UIViewController, MGLMapViewDelegate, CLLocationManagerDel
 
 //        let options = NavigationRouteOptions(waypoints: waypoints)
 		let options = MappyNavigationRouteOptions(waypoints: waypoints, provider: "car", qid: "1ad02a47-0e87-48f4-d190-a794fbbb6aac")
-		options.shapeFormat = .geoJSON
+		options.shapeFormat = .polyline
 		options.routeCalculationType = "fastest"
 		options.vehicle = "comcar"
 		options.walkSpeed = .normal
@@ -228,8 +230,9 @@ class ViewController: UIViewController, MGLMapViewDelegate, CLLocationManagerDel
             return success(routes)
         }
 
-//        _ = Directions.shared.calculate(options, completionHandler: handler)
-		_ = Directions(accessToken: "", host: "routemm.mappyrecette.net").calculate(options, completionHandler: handler)
+//		self.directions = Directions.shared
+		self.directions = Directions(accessToken: "", host: "routemm.mappyrecette.net")
+		self.directions.calculate(options, completionHandler: handler)
     }
 
     // MARK: Basic Navigation
@@ -239,7 +242,9 @@ class ViewController: UIViewController, MGLMapViewDelegate, CLLocationManagerDel
 
         exampleMode = .default
 
-        let navigationViewController = NavigationViewController(for: route, locationManager: navigationLocationManager())
+        let navigationViewController = NavigationViewController(for: route,
+																directions: self.directions,
+																locationManager: navigationLocationManager())
         navigationViewController.delegate = self
 		navigationViewController.routeController.reroutesProactively = true
 
