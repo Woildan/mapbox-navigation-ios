@@ -225,6 +225,15 @@ open class RouteController: NSObject {
     @objc public var reroutesProactively = false
 
     /**
+    Force the `RouteController` to request a route update from the server when receiving next location update.
+
+    This is a debug feature. This works by bypassing all usual checks that determine if a proactive rerouting should occur.
+    `reroutesProactively` must be set to true otherwise this parameter is ignored.
+	This property reverts to false once forced request has been sent.
+    */
+    @objc public var forceProactiveReroutingAtNextUpdate = false
+
+    /**
      When set to `false`, flushing of telemetry events is not delayed. Is set to `true` by default.
      */
     @objc public var delaysEventFlushing = true
@@ -693,6 +702,10 @@ extension RouteController: CLLocationManagerDelegate {
 
         // Check for faster route given users current location
         guard reroutesProactively else { return }
+        if forceProactiveReroutingAtNextUpdate {
+            checkForFasterRoute(from: location)
+            return
+        }
 		 // TODO: the 2 followings guard statements prevent route from being updated, should we remove/move them?
         // Only check for faster alternatives if the user has plenty of time left on the route.
         guard routeProgress.durationRemaining > 600 else { return }
@@ -789,9 +802,17 @@ extension RouteController: CLLocationManagerDelegate {
         }
 
         // Only check every so often for a faster route.
-        guard location.timestamp.timeIntervalSince(lastLocationDate) >= RouteControllerProactiveReroutingInterval else {
+        guard location.timestamp.timeIntervalSince(lastLocationDate) >= RouteControllerProactiveReroutingInterval
+			|| self.forceProactiveReroutingAtNextUpdate == true else {
             return
         }
+
+		var forceApplyReceivedRoute = false
+		if self.forceProactiveReroutingAtNextUpdate {
+			self.forceProactiveReroutingAtNextUpdate = false
+			forceApplyReceivedRoute = true
+		}
+
         let durationRemaining = routeProgress.durationRemaining
 
         getDirections(from: location) { [weak self] (route, mappyRoutes, error) in
@@ -808,8 +829,8 @@ extension RouteController: CLLocationManagerDelegate {
 					guard let firstLeg = upToDateRoute.legs.first, let firstStep = firstLeg.steps.first else {
 						return
 					}
-					guard firstStep.expectedTravelTime >= RouteControllerMediumAlertInterval &&
-						currentUpcomingManeuver == firstLeg.steps[1] else {
+					guard (firstStep.expectedTravelTime >= RouteControllerMediumAlertInterval && currentUpcomingManeuver == firstLeg.steps[1])
+						|| forceApplyReceivedRoute else {
 						return
 					}
 
