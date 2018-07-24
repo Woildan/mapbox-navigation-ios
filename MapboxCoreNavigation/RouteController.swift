@@ -803,6 +803,8 @@ extension RouteController: CLLocationManagerDelegate {
 			{
 				if let upToDateRoute = routes.first(where: { $0.routeType == .current })
 				{
+					strongSelf.lastLocationDate = nil
+
 					guard let firstLeg = upToDateRoute.legs.first, let firstStep = firstLeg.steps.first else {
 						return
 					}
@@ -823,8 +825,6 @@ extension RouteController: CLLocationManagerDelegate {
 						RouteControllerNotificationUserInfoKey.isProactiveKey: true]))
 					strongSelf.didFindFasterRoute = false
 				}
-
-				strongSelf.lastLocationDate = nil
 
 				if let fasterRoute = routes.first(where: { $0.routeType == .best })
 				{
