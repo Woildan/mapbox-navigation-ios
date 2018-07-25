@@ -869,9 +869,14 @@ extension RouteController: CLLocationManagerDelegate {
                 currentUpcomingManeuver == firstLeg.steps[1] && route.expectedTravelTime <= 0.9 * durationRemaining
 
             if routeIsFaster {
+				strongSelf.delegate?.routeController?(strongSelf, willRerouteAlong: route)
+				NotificationCenter.default.post(name: .routeControllerWillRerouteAlong, object: strongSelf, userInfo: [
+					RouteControllerNotificationUserInfoKey.routeKey: route ])
+
                 strongSelf.didFindFasterRoute = true
                 // If the upcoming maneuver in the new route is the same as the current upcoming maneuver, don't announce it
                 strongSelf.routeProgress = RouteProgress(route: route, legIndex: 0, spokenInstructionIndex: strongSelf.routeProgress.currentLegProgress.currentStepProgress.spokenInstructionIndex)
+				
                 strongSelf.delegate?.routeController?(strongSelf, didRerouteAlong: route)
                 strongSelf.didReroute(notification: NSNotification(name: .routeControllerDidReroute, object: nil, userInfo: [
                     RouteControllerNotificationUserInfoKey.isProactiveKey: true]))
@@ -914,6 +919,10 @@ extension RouteController: CLLocationManagerDelegate {
             }
 
             guard let route = route ?? mappyRoutes?.first else { return }
+
+			strongSelf.delegate?.routeController?(strongSelf, willRerouteAlong: route)
+			NotificationCenter.default.post(name: .routeControllerWillRerouteAlong, object: strongSelf, userInfo: [
+				RouteControllerNotificationUserInfoKey.routeKey: route ])
 
             strongSelf.routeProgress = RouteProgress(route: route, legIndex: 0)
             strongSelf.routeProgress.currentLegProgress.stepIndex = 0
