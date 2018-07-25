@@ -836,7 +836,9 @@ extension RouteController: CLLocationManagerDelegate {
 					NotificationCenter.default.post(name: .routeControllerWillRerouteAlong, object: strongSelf, userInfo: [
 						RouteControllerNotificationUserInfoKey.routeKey: upToDateRoute ])
 
-					strongSelf.routeProgress = RouteProgress(route: upToDateRoute, legIndex: 0, spokenInstructionIndex: 0)
+					// If the upcoming maneuver in the new route is the same as the current upcoming maneuver, don't announce it
+					let spokenInstructionIndex = (currentUpcomingManeuver == firstLeg.steps[1] ? strongSelf.routeProgress.currentLegProgress.currentStepProgress.spokenInstructionIndex : 0)
+					strongSelf.routeProgress = RouteProgress(route: upToDateRoute, legIndex: 0, spokenInstructionIndex: spokenInstructionIndex)
 
 					strongSelf.delegate?.routeController?(strongSelf, didRerouteAlong: upToDateRoute)
 				}
