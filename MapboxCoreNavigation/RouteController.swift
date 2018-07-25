@@ -444,8 +444,6 @@ open class RouteController: NSObject {
 		self.routeProgress = RouteProgress(route: route, legIndex: 0)
 
 		self.delegate?.routeController?(self, didRerouteAlong: route)
-		self.didReroute(notification: NSNotification(name: .routeControllerDidReroute, object: nil, userInfo: [
-			RouteControllerNotificationUserInfoKey.routeKey: route]))
 	}
 
     /**
@@ -838,13 +836,9 @@ extension RouteController: CLLocationManagerDelegate {
 					NotificationCenter.default.post(name: .routeControllerWillRerouteAlong, object: strongSelf, userInfo: [
 						RouteControllerNotificationUserInfoKey.routeKey: upToDateRoute ])
 
-					strongSelf.didFindFasterRoute = true
 					strongSelf.routeProgress = RouteProgress(route: upToDateRoute, legIndex: 0, spokenInstructionIndex: 0)
 
 					strongSelf.delegate?.routeController?(strongSelf, didRerouteAlong: upToDateRoute)
-					strongSelf.didReroute(notification: NSNotification(name: .routeControllerDidReroute, object: nil, userInfo: [
-						RouteControllerNotificationUserInfoKey.isProactiveKey: true]))
-					strongSelf.didFindFasterRoute = false
 				}
 
 				if let fasterRoute = routes.first(where: { $0.routeType == .best })
