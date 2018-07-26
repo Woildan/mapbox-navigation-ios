@@ -813,7 +813,8 @@ extension RouteController: CLLocationManagerDelegate {
 
         let durationRemaining = routeProgress.durationRemaining
 
-        getDirections(from: location) { [weak self] (route, mappyRoutes, error) in
+		let options = routeProgress.route.routeOptions
+        getDirections(from: location, routeOptions: options) { [weak self] (route, mappyRoutes, error) in
             guard let strongSelf = self else {
                 return
             }
@@ -901,7 +902,11 @@ extension RouteController: CLLocationManagerDelegate {
 
         self.lastRerouteLocation = location
 
-        getDirections(from: location) { [weak self] (route, mappyRoutes, error) in
+		let options = routeProgress.route.routeOptions
+		if let mappyOptions = options as? MappyNavigationRouteOptions {
+			mappyOptions.routeSignature = nil
+		}
+        getDirections(from: location, routeOptions: options) { [weak self] (route, mappyRoutes, error) in
             guard let strongSelf = self else {
                 return
             }
@@ -953,10 +958,9 @@ extension RouteController: CLLocationManagerDelegate {
         }
     }
 
-	func getDirections(from location: CLLocation, completion: @escaping (_ route: Route?, _ mappyRoutes: [MappyRoute]?, _ error: Error?)->Void) {
+	func getDirections(from location: CLLocation, routeOptions options: RouteOptions, completion: @escaping (_ route: Route?, _ mappyRoutes: [MappyRoute]?, _ error: Error?)->Void) {
         routeTask?.cancel()
 
-        let options = routeProgress.route.routeOptions
         options.waypoints = [Waypoint(coordinate: location.coordinate)] + routeProgress.remainingWaypoints
         if let firstWaypoint = options.waypoints.first, location.course >= 0 {
             firstWaypoint.heading = location.course
