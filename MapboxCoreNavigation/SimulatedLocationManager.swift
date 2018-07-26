@@ -57,6 +57,7 @@ open class SimulatedLocationManager: NavigationLocationManager {
 
 	public var shouldDeviateRoute: Bool = false
 	fileprivate var routeDeviationDeltaCoordinates: CLLocationCoordinate2D?
+	fileprivate var routeDeviationCourse: CLLocationDegrees?
     
     /**
      Initalizes a new `SimulatedLocationManager` with the given route.
@@ -98,6 +99,7 @@ open class SimulatedLocationManager: NavigationLocationManager {
 
 			shouldDeviateRoute = false
 			routeDeviationDeltaCoordinates = nil
+			routeDeviationCourse = nil
         }
     }
     
@@ -163,34 +165,57 @@ open class SimulatedLocationManager: NavigationLocationManager {
             currentSpeed = calculateCurrentSpeed(distance: distance, coordinatesNearby: coordinatesNearby, closestLocation: closestLocation)
         }
 
+		var course = newCoordinate.direction(to: lookAheadCoordinate).wrap(min: 0, max: 360)
 		var coordinate = newCoordinate
+
 		if shouldDeviateRoute == true {
 			let delta: CLLocationDegrees = 0.0002
-			if routeDeviationDeltaCoordinates == nil {
-				let angle = newCoordinate.direction(to: lookAheadCoordinate).wrap(min: 0, max: 360)
-				if (45.0...135.0).contains(angle)
-					|| (225.0...315.0).contains(angle) {
+			if routeDeviationDeltaCoordinates == nil || routeDeviationCourse == nil {
+				switch course
+				{
+				case 45...135:
+					routeDeviationDeltaCoordinates = CLLocationCoordinate2DMake(-delta, 0)
+				case 225...315:
+					routeDeviationDeltaCoordinates = CLLocationCoordinate2DMake(delta, 0)
+				case 135...225:
+					routeDeviationDeltaCoordinates = CLLocationCoordinate2DMake(0, -delta)
+				default:
 					routeDeviationDeltaCoordinates = CLLocationCoordinate2DMake(0, delta)
 				}
-				else {
-					routeDeviationDeltaCoordinates = CLLocationCoordinate2DMake(delta, 0)
-				}
+				routeDeviationCourse = course + 45
 			}
 			else {
-				let lat: CLLocationDegrees = (routeDeviationDeltaCoordinates!.latitude > 0 ? routeDeviationDeltaCoordinates!.latitude + delta : 0)
-				let lon: CLLocationDegrees = (routeDeviationDeltaCoordinates!.longitude > 0 ? routeDeviationDeltaCoordinates!.longitude + delta : 0)
-				routeDeviationDeltaCoordinates = CLLocationCoordinate2DMake(lat, lon)
+				let latitude, longitude: CLLocationDegrees
+				switch (routeDeviationDeltaCoordinates!.latitude, routeDeviationDeltaCoordinates!.longitude)
+				{
+				case let (lat, _) where lat < 0:
+					latitude = lat - delta
+					longitude = 0
+				case let (lat, _) where lat > 0:
+					latitude = lat + delta
+					longitude = 0
+				case let (_, lng) where lng < 0:
+					latitude = 0
+					longitude = lng - delta
+				 case let (_, lng) where lng > 0:
+					latitude = 0
+					longitude = lng + delta
+				default:
+					fatalError("Should never enter default case")
+				}
+				routeDeviationDeltaCoordinates = CLLocationCoordinate2DMake(latitude, longitude)
 			}
 
 			coordinate = CLLocationCoordinate2DMake(newCoordinate.latitude + routeDeviationDeltaCoordinates!.latitude,
 													newCoordinate.longitude + routeDeviationDeltaCoordinates!.longitude)
+			course = routeDeviationCourse!
 		}
         
         let location = CLLocation(coordinate: coordinate,
                                   altitude: 0,
                                   horizontalAccuracy: horizontalAccuracy,
                                   verticalAccuracy: verticalAccuracy,
-                                  course: newCoordinate.direction(to: lookAheadCoordinate).wrap(min: 0, max: 360),
+                                  course: course,
                                   speed: currentSpeed,
                                   timestamp: Date())
         currentLocation = location
