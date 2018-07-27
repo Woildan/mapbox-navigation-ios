@@ -722,7 +722,19 @@ extension RouteController: CLLocationManagerDelegate {
         let currentDestination = routeProgress.currentLeg.destination
         guard let remainingVoiceInstructions = routeProgress.currentLegProgress.currentStepProgress.remainingSpokenInstructions else { return }
 
-        if routeProgress.currentLegProgress.remainingSteps.count <= 1 && remainingVoiceInstructions.count == 0 && currentDestination != previousArrivalWaypoint {
+		let arrivalThreshold: CLLocationDistance = 50
+		var distanceToNextStep: CLLocationDistance = userSnapToStepDistanceFromManeuver ?? arrivalThreshold
+		if let coordinates = routeProgress.currentLegProgress.currentStep.coordinates,
+			let coordinate = rawLocation?.coordinate
+		{
+			distanceToNextStep = Polyline(coordinates).distance(from: coordinate)
+		}
+
+        if routeProgress.currentLegProgress.remainingSteps.count <= 1
+			&& remainingVoiceInstructions.count == 0
+			&& currentDestination != previousArrivalWaypoint
+			&& distanceToNextStep <= arrivalThreshold
+		{
             previousArrivalWaypoint = currentDestination
 
             routeProgress.currentLegProgress.userHasArrivedAtWaypoint = true
