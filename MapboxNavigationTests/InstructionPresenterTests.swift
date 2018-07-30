@@ -9,7 +9,7 @@ class InstructionPresenterTests: XCTestCase {
         
         let exitAttribute = VisualInstructionComponent(type: .exit, text: "Exit", imageURL: nil, abbreviation: nil, abbreviationPriority: 0)
         let exitCodeAttribute = VisualInstructionComponent(type: .exitCode, text: "123A", imageURL: nil, abbreviation: nil, abbreviationPriority: 0)
-        let exitInstruction = VisualInstruction(text: nil, maneuverType: .takeOffRamp, maneuverDirection: .right, textComponents: [exitAttribute, exitCodeAttribute])
+        let exitInstruction = VisualInstruction(text: nil, maneuverType: .takeOffRamp, maneuverDirection: .right, components: [exitAttribute, exitCodeAttribute])
         
         let label = InstructionLabel(frame: CGRect(origin: .zero, size:CGSize(width: 50, height: 50)))
 
@@ -23,8 +23,9 @@ class InstructionPresenterTests: XCTestCase {
 
         XCTAssert(attachment is ExitAttachment, "Attachment for exit shield should be of type ExitAttachment")
     }
-    
-    func testAbbreviationPerformance() {
+
+    /// NOTE: This test is disabled pending https://github.com/mapbox/mapbox-navigation-ios/issues/1468
+    func x_testAbbreviationPerformance() {
         let route = Fixture.route(from: "route-with-banner-instructions", waypoints: [Waypoint(coordinate: CLLocationCoordinate2D(latitude: 37.795042, longitude: -122.413165)), Waypoint(coordinate: CLLocationCoordinate2D(latitude: 37.7727, longitude: -122.433378))])
         
         let steps = route.legs.flatMap { $0.steps }
