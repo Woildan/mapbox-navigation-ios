@@ -166,7 +166,7 @@ class ViewController: UIViewController, MGLMapViewDelegate {
 
 //        let options = NavigationRouteOptions(waypoints: waypoints)
 		let options = MappyNavigationRouteOptions(waypoints: waypoints, provider: "car", qid: "1ad02a47-0e87-48f4-d190-a794fbbb6aac")
-		options.shapeFormat = .polyline
+		options.shapeFormat = .polyline6
 		options.routeCalculationType = "fastest"
 		options.vehicle = "comcar"
 		options.walkSpeed = .normal
@@ -185,6 +185,7 @@ class ViewController: UIViewController, MGLMapViewDelegate {
 
 //		self.directions = Directions.shared
 		self.directions = Directions(accessToken: "", host: "routemm.mappyrecette.net")
+//		self.directions = Directions(accessToken: "", host: "routemm.mappysnap.net")
 		self.directions.calculate(options, completionHandler: handler)
     }
 
