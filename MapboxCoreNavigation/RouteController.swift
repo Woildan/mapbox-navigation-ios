@@ -986,7 +986,9 @@ extension RouteController: CLLocationManagerDelegate {
 
         if let accessToken = routeProgress.route.accessToken, let apiEndpoint = routeProgress.route.apiEndpoint, let host = apiEndpoint.host,
 			!accessToken.isEmpty {
+			let mappyGpsDebugDelegate = directions.mappyGPSDebugDelegate
             directions = Directions(accessToken: accessToken, host: host)
+			directions.mappyGPSDebugDelegate = mappyGpsDebugDelegate
         }
 
         routeTask = directions.calculate(options) { [weak self] (waypoints, routes, error) in
