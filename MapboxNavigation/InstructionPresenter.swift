@@ -50,7 +50,7 @@ class InstructionPresenter {
         for component in sorted {
             let isFirst = component.index == 0
             let joinChar = isFirst ? "" : " "
-            guard component.component.type == .text else { continue }
+            guard component.component.type == .text || component.component.type == .coloredText else { continue }
             guard let abbreviation = component.component.abbreviation else { continue }
             
             attributedPairs.attributedStrings[component.index] = NSAttributedString(string: joinChar + abbreviation, attributes: attributes(for: source))
