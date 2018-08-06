@@ -2,7 +2,7 @@ import Foundation
 import MapboxDirections
 import Turf
 
-fileprivate let maximumSpeed: CLLocationSpeed = 30 // ~108 kmh
+fileprivate let maximumSpeed: CLLocationSpeed = 36 // ~130 kmh
 fileprivate let minimumSpeed: CLLocationSpeed = 6 // ~21 kmh
 fileprivate var distanceFilter: CLLocationDistance = 10
 fileprivate var verticalAccuracy: CLLocationAccuracy = 10
@@ -115,8 +115,10 @@ open class SimulatedLocationManager: NavigationLocationManager {
         guard let routeController = notification.object as? RouteController else {
             return
         }
-        
-        route = routeController.routeProgress.route
+
+		self.currentDistance = calculateCurrentDistance(routeController.routeProgress.distanceTraveled)
+		routeProgress = routeController.routeProgress
+		route = routeController.routeProgress.route
     }
     
     deinit {
@@ -161,7 +163,13 @@ open class SimulatedLocationManager: NavigationLocationManager {
             let time = expectedSegmentTravelTimes.optional[closestCoordinateOnRoute.index] {
             let distance = coordinates[closestCoordinateOnRoute.index].distance(to: nextCoordinateOnRoute)
             currentSpeed =  max(distance / time, 2)
-        } else {
+		}
+		else if let stepTime = routeProgress?.currentLegProgress.currentStep.expectedTravelTime,
+			let stepDistance = routeProgress?.currentLegProgress.currentStep.distance {
+			let meanSpeed = stepDistance / stepTime
+			currentSpeed = min(max(meanSpeed, minimumSpeed), maximumSpeed)
+		}
+		else {
             currentSpeed = calculateCurrentSpeed(distance: distance, coordinatesNearby: coordinatesNearby, closestLocation: closestLocation)
         }
 
